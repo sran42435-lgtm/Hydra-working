@@ -1,1 +1,87 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra Response Service"
+  version: "1.0.0"
+  description: "Response Service untuk memformat output AI - Phase 1"
 
+servers:
+  - url: "http://localhost:8005"
+    description: "Development server"
+
+paths:
+  /v1/response/format:
+    post:
+      summary: "Format respons AI"
+      description: |
+        Menerima teks mentah dari AI Service dan mengembalikan
+        versi yang sudah diformat (JSON dan Markdown).
+      operationId: formatResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormatRequest"
+      responses:
+        "200":
+          description: "Respons berhasil diformat"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FormatResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    FormatRequest:
+      type: object
+      required:
+        - raw_text
+      properties:
+        raw_text:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        format:
+          type: string
+          enum: [json, markdown]
+          default: json
+
+    FormattedContent:
+      type: object
+      properties:
+        text:
+          type: string
+        markdown:
+          type: string
+
+    FormatResponse:
+      type: object
+      properties:
+        formatted:
+          $ref: "#/components/schemas/FormattedContent"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
