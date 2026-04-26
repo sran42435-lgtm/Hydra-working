@@ -1,1 +1,106 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra AI Service"
+  version: "1.0.0"
+  description: "AI Service untuk prompt construction dan generasi teks - Phase 1"
 
+servers:
+  - url: "http://localhost:8003"
+    description: "Development server"
+
+paths:
+  /v1/ai/generate:
+    post:
+      summary: "Generate respons AI"
+      description: |
+        Menerima prompt, konteks percakapan, dan trace ID.
+        Mengembalikan teks yang dihasilkan oleh model.
+      operationId: generate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: "Respons berhasil"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    ContextMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+
+    GenerateRequest:
+      type: object
+      required:
+        - session_id
+        - prompt
+        - trace_id
+      properties:
+        session_id:
+          type: string
+          minLength: 1
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        context:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContextMessage"
+          default: []
+        trace_id:
+          type: string
+          minLength: 1
+
+    GenerateResponse:
+      type: object
+      properties:
+        generated_text:
+          type: string
+        usage:
+          type: object
+          properties:
+            input_tokens:
+              type: integer
+            output_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
