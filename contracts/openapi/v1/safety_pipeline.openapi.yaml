@@ -1,1 +1,112 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra Safety Pipeline"
+  version: "1.0.0"
+  description: "Safety Pipeline Service untuk validasi konten input/output - Phase 1"
 
+servers:
+  - url: "http://localhost:8002"
+    description: "Development server"
+
+paths:
+  /v1/safety/input:
+    post:
+      summary: "Periksa keamanan input"
+      description: "Memeriksa konten input dari user sebelum diproses AI"
+      operationId: checkInput
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyCheckRequest"
+      responses:
+        "200":
+          description: "Hasil pemeriksaan"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyCheckResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/safety/output:
+    post:
+      summary: "Periksa keamanan output"
+      description: "Memeriksa konten output dari AI sebelum dikirim ke user"
+      operationId: checkOutput
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyCheckRequest"
+      responses:
+        "200":
+          description: "Hasil pemeriksaan"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyCheckResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    SafetyCheckRequest:
+      type: object
+      required:
+        - content
+        - session_id
+        - trace_id
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        session_id:
+          type: string
+          minLength: 1
+        trace_id:
+          type: string
+          minLength: 1
+
+    SafetyCheckResponse:
+      type: object
+      properties:
+        safe:
+          type: boolean
+        risk_score:
+          type: number
+          minimum: 0.0
+          maximum: 1.0
+        filtered_content:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
