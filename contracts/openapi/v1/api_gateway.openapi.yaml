@@ -1,1 +1,107 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra API Gateway"
+  version: "1.0.0"
+  description: "API Gateway untuk Hydra AI - Phase 1"
 
+servers:
+  - url: "http://localhost:8000"
+    description: "Development server"
+
+paths:
+  /v1/chat:
+    post:
+      summary: "Kirim pesan chat"
+      description: |
+        Menerima pesan dari user, menjalankan safety check,
+        dan mengembalikan respons dari AI.
+      operationId: chat
+      parameters:
+        - name: X-Session-Id
+          in: header
+          required: false
+          schema:
+            type: string
+          description: "ID sesi chat. Jika tidak ada, akan dibuatkan baru."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: "Respons berhasil"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+        "400":
+          description: "Bad request atau konten diblokir"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: "Rate limit exceeded"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        attachments:
+          type: array
+          items:
+            type: string
+          default: []
+
+    ChatResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        response:
+          type: string
+        trace_id:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        trace_id:
+          type: string
+        retry_after:
+          type: integer
