@@ -1,1 +1,132 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra Memory System"
+  version: "1.0.0"
+  description: "Memory System Service untuk penyimpanan short-term memory - Phase 1"
 
+servers:
+  - url: "http://localhost:8006"
+    description: "Development server"
+
+paths:
+  /v1/memory:
+    post:
+      summary: "Simpan pesan baru"
+      description: "Menyimpan pesan user atau assistant ke short-term memory"
+      operationId: saveMemory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryCreateRequest"
+      responses:
+        "201":
+          description: "Pesan berhasil disimpan"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/memory/short-term:
+    get:
+      summary: "Ambil short-term memory"
+      description: "Mengambil riwayat percakapan untuk sesi tertentu"
+      operationId: getShortTermMemory
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        "200":
+          description: "Daftar memory"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryListResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    MemoryCreateRequest:
+      type: object
+      required:
+        - session_id
+        - role
+        - content
+      properties:
+        session_id:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+
+    MemoryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        session_id:
+          type: string
+        role:
+          type: string
+        content:
+          type: string
+        timestamp:
+          type: string
+
+    MemoryListResponse:
+      type: object
+      properties:
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryResponse"
+        count:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
