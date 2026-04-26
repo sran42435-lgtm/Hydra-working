@@ -1,1 +1,84 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra BFF Layer"
+  version: "1.0.0"
+  description: "Backend-for-Frontend Layer untuk Hydra AI - Phase 1"
 
+servers:
+  - url: "http://localhost:3000"
+    description: "Development server"
+
+paths:
+  /api/chat:
+    post:
+      summary: "Kirim pesan chat dari frontend"
+      description: |
+        Menerima pesan dari frontend, meneruskannya ke API Gateway,
+        dan mengembalikan respons ke frontend.
+      operationId: bffChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BffChatRequest"
+      responses:
+        "200":
+          description: "Respons berhasil"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BffChatResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gateway:
+                    type: object
+                  bff:
+                    type: string
+
+components:
+  schemas:
+    BffChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        session_id:
+          type: string
+          description: "ID sesi chat (opsional)"
+
+    BffChatResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        response:
+          type: string
+        trace_id:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
