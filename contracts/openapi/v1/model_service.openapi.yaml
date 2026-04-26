@@ -1,1 +1,94 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra Model Service"
+  version: "1.0.0"
+  description: "Model Service untuk inferensi LLM - Phase 1"
 
+servers:
+  - url: "http://localhost:8004"
+    description: "Development server"
+
+paths:
+  /v1/model/generate:
+    post:
+      summary: "Generate text menggunakan LLM"
+      description: |
+        Menerima prompt dan parameter generasi,
+        mengembalikan teks yang dihasilkan oleh model.
+      operationId: generate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateRequest"
+      responses:
+        "200":
+          description: "Respons berhasil"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    GenerateRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 1024
+        temperature:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 0.7
+
+    GenerateResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        usage:
+          type: object
+          properties:
+            input_tokens:
+              type: integer
+            output_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
