@@ -1,1 +1,83 @@
+openapi: "3.0.3"
+info:
+  title: "Hydra Orchestrator Service"
+  version: "1.0.0"
+  description: "Orchestrator Service untuk alur chat - Phase 1"
 
+servers:
+  - url: "http://localhost:8001"
+    description: "Development server"
+
+paths:
+  /v1/orchestrator/chat:
+    post:
+      summary: "Proses chat request"
+      description: |
+        Menerima request dari API Gateway, mengatur alur:
+        ambil memory → panggil AI → simpan memory → format respons.
+      operationId: processChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrchestratorRequest"
+      responses:
+        "200":
+          description: "Respons berhasil"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrchestratorResponse"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /health:
+    get:
+      summary: "Health check"
+      responses:
+        "200":
+          description: "Service sehat"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  schemas:
+    OrchestratorRequest:
+      type: object
+      required:
+        - session_id
+        - message
+        - trace_id
+      properties:
+        session_id:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        trace_id:
+          type: string
+          minLength: 1
+
+    OrchestratorResponse:
+      type: object
+      properties:
+        response_text:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
