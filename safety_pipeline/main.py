@@ -4,9 +4,7 @@ Entry point untuk layanan validasi keamanan input/output.
 Menyediakan endpoint REST untuk memeriksa konten sebelum dan sesudah diproses AI.
 """
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from shared.config.config_loader import ConfigLoader
+from fastapi import FastAPI, Request, HTTPException
 from shared.errors.error_handler import setup_error_handlers
 from .config import HOST, PORT, DEBUG
 from .input_guard import InputGuard
@@ -23,18 +21,28 @@ setup_error_handlers(app)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response Models
+# Helper: Parse & Validate Safety Check Request Body
 # ---------------------------------------------------------------------------
-class SafetyCheckRequest(BaseModel):
-    content: str = Field(..., min_length=1, max_length=10000)
-    session_id: str = Field(..., min_length=1)
-    trace_id: str = Field(..., min_length=1)
+def _parse_safety_request(body: dict) -> dict:
+    """Memvalidasi body request untuk safety check. Mengembalikan dict yang sudah bersih."""
+    content = body.get("content")
+    session_id = body.get("session_id")
+    trace_id = body.get("trace_id")
 
+    if not content or not isinstance(content, str):
+        raise ValueError("content wajib diisi dan harus string")
+    if len(content) > 10000:
+        raise ValueError("content maksimal 10000 karakter")
+    if not session_id or not isinstance(session_id, str):
+        raise ValueError("session_id wajib diisi dan harus string")
+    if not trace_id or not isinstance(trace_id, str):
+        raise ValueError("trace_id wajib diisi dan harus string")
 
-class SafetyCheckResponse(BaseModel):
-    safe: bool
-    risk_score: float
-    filtered_content: str
+    return {
+        "content": content,
+        "session_id": session_id,
+        "trace_id": trace_id
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -43,32 +51,47 @@ class SafetyCheckResponse(BaseModel):
 
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
     return {"status": "ok", "service": "safety_pipeline"}
 
 
-@app.post("/v1/safety/input", response_model=SafetyCheckResponse)
-async def check_input(request: SafetyCheckRequest):
+@app.post("/v1/safety/input")
+async def check_input(request: Request):
     """
     Periksa konten input dari user sebelum diteruskan ke AI.
     Dipanggil oleh API Gateway.
     """
     try:
-        result = input_guard.check(request.content)
-        return SafetyCheckResponse(**result)
+        body = await request.json()
+        parsed = _parse_safety_request(body)
+        result = input_guard.check(parsed["content"])
+        return {
+            "safe": result["safe"],
+            "risk_score": result["risk_score"],
+            "filtered_content": result["filtered_content"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Input safety check failed: {str(e)}")
 
 
-@app.post("/v1/safety/output", response_model=SafetyCheckResponse)
-async def check_output(request: SafetyCheckRequest):
+@app.post("/v1/safety/output")
+async def check_output(request: Request):
     """
     Periksa konten output dari AI sebelum dikirim ke user.
     Dipanggil oleh AI Service.
     """
     try:
-        result = output_guard.check(request.content)
-        return SafetyCheckResponse(**result)
+        body = await request.json()
+        parsed = _parse_safety_request(body)
+        result = output_guard.check(parsed["content"])
+        return {
+            "safe": result["safe"],
+            "risk_score": result["risk_score"],
+            "filtered_content": result["filtered_content"]
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Output safety check failed: {str(e)}")
 
