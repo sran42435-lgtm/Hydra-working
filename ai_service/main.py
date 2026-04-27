@@ -6,8 +6,7 @@ dan response policy sebelum mengembalikan hasil ke Orchestrator.
 """
 
 import httpx
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Request
 from shared.errors.error_handler import setup_error_handlers
 from .config import HOST, PORT, DEBUG, MODEL_SERVICE_URL, SAFETY_PIPELINE_URL
 from .prompt_construction_engine import PromptConstructionEngine
@@ -24,23 +23,43 @@ setup_error_handlers(app)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response Models
+# Helper: Parse & Validate Generate Request Body
 # ---------------------------------------------------------------------------
-class ContextMessage(BaseModel):
-    role: str
-    content: str
+def _parse_generate_request(body: dict) -> dict:
+    """Memvalidasi body request untuk generate. Mengembalikan dict yang sudah bersih."""
+    session_id = body.get("session_id")
+    prompt = body.get("prompt")
+    trace_id = body.get("trace_id")
+    context = body.get("context", [])
 
+    if not session_id or not isinstance(session_id, str):
+        raise ValueError("session_id wajib diisi dan harus string")
+    if not prompt or not isinstance(prompt, str):
+        raise ValueError("prompt wajib diisi dan harus string")
+    if len(prompt) > 10000:
+        raise ValueError("prompt maksimal 10000 karakter")
+    if not trace_id or not isinstance(trace_id, str):
+        raise ValueError("trace_id wajib diisi dan harus string")
+    if not isinstance(context, list):
+        raise ValueError("context harus berupa list")
 
-class GenerateRequest(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    prompt: str = Field(..., min_length=1, max_length=10000)
-    context: list[ContextMessage] = Field(default_factory=list)
-    trace_id: str = Field(..., min_length=1)
+    # Validasi setiap item dalam context
+    validated_context = []
+    for item in context:
+        role = item.get("role")
+        content = item.get("content")
+        if role not in ("user", "assistant"):
+            raise ValueError(f"role context harus 'user' atau 'assistant', bukan '{role}'")
+        if not content or not isinstance(content, str):
+            raise ValueError("content context tidak boleh kosong")
+        validated_context.append({"role": role, "content": content})
 
-
-class GenerateResponse(BaseModel):
-    generated_text: str
-    usage: dict
+    return {
+        "session_id": session_id,
+        "prompt": prompt,
+        "trace_id": trace_id,
+        "context": validated_context
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -52,8 +71,8 @@ async def health():
     return {"status": "ok", "service": "ai_service"}
 
 
-@app.post("/v1/ai/generate", response_model=GenerateResponse)
-async def generate(request: GenerateRequest):
+@app.post("/v1/ai/generate")
+async def generate(request: Request):
     """
     Menghasilkan respons AI berdasarkan prompt dan konteks.
     
@@ -65,10 +84,13 @@ async def generate(request: GenerateRequest):
     5. Kembalikan hasil.
     """
     try:
+        body = await request.json()
+        parsed = _parse_generate_request(body)
+
         # Step 1: Build prompt
         prompt_result = prompt_engine.build_prompt(
-            prompt=request.prompt,
-            context=[msg.dict() for msg in request.context]
+            prompt=parsed["prompt"],
+            context=parsed["context"]
         )
 
         # Step 2: Call Model Service
@@ -88,40 +110,44 @@ async def generate(request: GenerateRequest):
                 )
             model_data = model_resp.json()
             generated_text = model_data.get("text", "")
+            usage = model_data.get("usage", {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
             
             # Step 3: Safety Output Check
-            safety_resp = await client.post(
-                f"{SAFETY_PIPELINE_URL}/v1/safety/output",
-                json={
-                    "content": generated_text,
-                    "session_id": request.session_id,
-                    "trace_id": request.trace_id
-                }
-            )
-            if safety_resp.status_code == 200:
-                safety_data = safety_resp.json()
-                if not safety_data.get("safe", True):
-                    # Konten diblokir, gunakan fallback
-                    generated_text = response_policy.get_fallback_response()
-                else:
-                    generated_text = safety_data.get("filtered_content", generated_text)
-            # Jika safety service tidak tersedia, tetap lanjutkan dengan generated_text apa adanya (degraded mode).
+            try:
+                safety_resp = await client.post(
+                    f"{SAFETY_PIPELINE_URL}/v1/safety/output",
+                    json={
+                        "content": generated_text,
+                        "session_id": parsed["session_id"],
+                        "trace_id": parsed["trace_id"]
+                    }
+                )
+                if safety_resp.status_code == 200:
+                    safety_data = safety_resp.json()
+                    if not safety_data.get("safe", True):
+                        generated_text = response_policy.get_fallback_response()
+                    else:
+                        generated_text = safety_data.get("filtered_content", generated_text)
+            except Exception:
+                # Jika safety service tidak tersedia, lanjutkan dengan generated_text apa adanya (degraded mode)
+                pass
 
         # Step 4: Apply response policy
         policy_result = response_policy.validate(generated_text)
         final_text = policy_result["text"]
 
-        return GenerateResponse(
-            generated_text=final_text,
-            usage=model_data.get("usage", {"input_tokens": 0, "output_tokens": 0})
-        )
+        return {
+            "generated_text": final_text,
+            "usage": usage
+        }
 
     except httpx.TimeoutException:
-        # Model timeout -> fallback
-        return GenerateResponse(
-            generated_text=response_policy.get_fallback_response(),
-            usage={"input_tokens": 0, "output_tokens": 0}
-        )
+        return {
+            "generated_text": response_policy.get_fallback_response(),
+            "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
