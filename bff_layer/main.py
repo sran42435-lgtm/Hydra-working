@@ -4,10 +4,10 @@ Backend-for-Frontend yang menjadi perantara antara Frontend dan API Gateway.
 Menyediakan endpoint REST untuk chat dan health check.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from shared.errors.error_handler import setup_error_handlers
+from shared.schemas.chat_schema import parse_chat_request, build_chat_response
 from .config import HOST, PORT, DEBUG
 from .chat_aggregation_service import ChatAggregationService
 
@@ -27,20 +27,6 @@ setup_error_handlers(app)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response Models
-# ---------------------------------------------------------------------------
-class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=10000)
-    session_id: str = Field(default=None)
-
-
-class ChatResponse(BaseModel):
-    session_id: str
-    response: str
-    trace_id: str
-
-
-# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -49,15 +35,27 @@ async def health():
     return await chat_service.health_check()
 
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Endpoint chat dari frontend."""
+@app.post("/api/chat")
+async def chat(request: Request):
+    """
+    Endpoint chat dari frontend.
+    Menerima { "message": "...", "session_id": "..." (opsional) }
+    """
     try:
+        body = await request.json()
+        parsed = parse_chat_request(body)
+
         result = await chat_service.send_message(
-            message=request.message,
-            session_id=request.session_id
+            message=parsed["message"],
+            session_id=parsed.get("session_id")
         )
-        return ChatResponse(**result)
+        return build_chat_response(
+            session_id=result["session_id"],
+            response_text=result["response"],
+            trace_id=result["trace_id"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat request failed: {str(e)}")
 
