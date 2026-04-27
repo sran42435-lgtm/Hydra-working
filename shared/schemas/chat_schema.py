@@ -1,93 +1,181 @@
 """
-Chat Schema - Phase 1
+Chat Schema - Phase 1 (Tanpa Pydantic)
 Mendefinisikan struktur data untuk request/response chat.
-Digunakan oleh api_gateway, bff_layer, dan orchestrator_service.
+Menggunakan fungsi validasi manual sebagai pengganti Pydantic BaseModel.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
 
 
-class ChatRequest(BaseModel):
+# ---------------------------------------------------------------------------
+# Validasi Helper
+# ---------------------------------------------------------------------------
+
+def validate_message(value: str, max_len: int = 10000) -> str:
+    """Validasi pesan tidak boleh kosong dan tidak melebihi max_len."""
+    if not isinstance(value, str):
+        raise ValueError("message harus berupa string")
+    if len(value.strip()) == 0:
+        raise ValueError("message tidak boleh kosong")
+    if len(value) > max_len:
+        raise ValueError(f"message maksimal {max_len} karakter")
+    return value
+
+
+def validate_session_id(value: str) -> str:
+    """Validasi session_id tidak boleh kosong."""
+    if not value or not isinstance(value, str):
+        raise ValueError("session_id tidak boleh kosong")
+    return value
+
+
+def validate_trace_id(value: str) -> str:
+    """Validasi trace_id tidak boleh kosong."""
+    if not value or not isinstance(value, str):
+        raise ValueError("trace_id tidak boleh kosong")
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Chat Request (Pengganti ChatRequest BaseModel)
+# ---------------------------------------------------------------------------
+
+def parse_chat_request(request_data: dict) -> dict:
     """
-    Schema untuk request chat dari client.
-    
-    Attributes:
-        message: Isi pesan dari user.
-        session_id: ID sesi chat (opsional, auto-generated jika tidak ada).
-        attachments: Daftar attachment (tidak digunakan di Phase 1).
+    Memparsing dan memvalidasi request chat dari client.
+
+    Args:
+        request_data: Dictionary dengan key 'message' (wajib),
+                      'session_id' (opsional), 'attachments' (opsional).
+
+    Returns:
+        Dictionary yang sudah tervalidasi.
+
+    Raises:
+        ValueError: Jika validasi gagal.
     """
-    
-    message: str = Field(..., min_length=1, max_length=10000)
-    session_id: Optional[str] = Field(default=None)
-    attachments: list = Field(default_factory=list)
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "message": "Halo, apa kabar?",
-                "session_id": "550e8400-e29b-41d4-a716-446655440000",
-                "attachments": []
-            }
-        }
+    message = request_data.get("message")
+    if not message:
+        raise ValueError("message wajib diisi")
+
+    return {
+        "message": validate_message(message),
+        "session_id": request_data.get("session_id"),
+        "attachments": request_data.get("attachments", [])
+    }
 
 
-class ChatResponse(BaseModel):
+# ---------------------------------------------------------------------------
+# Chat Response (Pengganti ChatResponse BaseModel)
+# ---------------------------------------------------------------------------
+
+def build_chat_response(session_id: str, response_text: str, trace_id: str) -> dict:
     """
-    Schema untuk response chat ke client.
-    
-    Attributes:
+    Membangun response chat untuk client.
+
+    Args:
         session_id: ID sesi chat.
-        response: Teks respons dari AI.
-        trace_id: ID tracing untuk debugging.
-    """
-    
-    session_id: str
-    response: str
-    trace_id: str
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": "550e8400-e29b-41d4-a716-446655440000",
-                "response": "Kabar baik! Ada yang bisa saya bantu?",
-                "trace_id": "661e8400-e29b-41d4-a716-446655440001"
-            }
-        }
-
-
-class OrchestratorRequest(BaseModel):
-    """
-    Schema untuk request dari API Gateway ke Orchestrator.
-    
-    Attributes:
-        session_id: ID sesi chat.
-        message: Pesan yang sudah difilter oleh safety pipeline.
+        response_text: Teks respons dari AI.
         trace_id: ID tracing.
+
+    Returns:
+        Dictionary dengan key 'session_id', 'response', 'trace_id'.
     """
-    
-    session_id: str
-    message: str
-    trace_id: str
+    return {
+        "session_id": session_id,
+        "response": response_text,
+        "trace_id": trace_id
+    }
 
 
-class OrchestratorResponse(BaseModel):
+# ---------------------------------------------------------------------------
+# Orchestrator Request (Pengganti OrchestratorRequest BaseModel)
+# ---------------------------------------------------------------------------
+
+def parse_orchestrator_request(request_data: dict) -> dict:
     """
-    Schema untuk response dari Orchestrator ke API Gateway.
-    
-    Attributes:
+    Memparsing dan memvalidasi request dari API Gateway ke Orchestrator.
+
+    Args:
+        request_data: Dictionary dengan key 'session_id', 'message', 'trace_id'.
+
+    Returns:
+        Dictionary yang sudah tervalidasi.
+    """
+    session_id = request_data.get("session_id")
+    message = request_data.get("message")
+    trace_id = request_data.get("trace_id")
+
+    if not session_id:
+        raise ValueError("session_id wajib diisi")
+    if not message:
+        raise ValueError("message wajib diisi")
+    if not trace_id:
+        raise ValueError("trace_id wajib diisi")
+
+    return {
+        "session_id": validate_session_id(session_id),
+        "message": validate_message(message),
+        "trace_id": validate_trace_id(trace_id)
+    }
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator Response (Pengganti OrchestratorResponse BaseModel)
+# ---------------------------------------------------------------------------
+
+def build_orchestrator_response(response_text: str) -> dict:
+    """
+    Membangun response dari Orchestrator ke API Gateway.
+
+    Args:
         response_text: Teks respons yang sudah diformat.
+
+    Returns:
+        Dictionary dengan key 'response_text'.
     """
-    
-    response_text: str
+    return {"response_text": response_text}
 
 
-class ContextMessage(BaseModel):
+# ---------------------------------------------------------------------------
+# Context Message (Pengganti ContextMessage BaseModel)
+# ---------------------------------------------------------------------------
+
+def validate_context_message(msg: dict) -> dict:
     """
-    Schema untuk satu pesan context yang dikirim ke AI Service.
-    Mirip dengan MessageSchema tapi khusus untuk prompt construction.
+    Memvalidasi satu pesan context untuk AI Service.
+
+    Args:
+        msg: Dictionary dengan key 'role', 'content', 'timestamp' (opsional).
+
+    Returns:
+        Dictionary yang sudah tervalidasi.
     """
-    
-    role: str  # "user" atau "assistant"
-    content: str
-    timestamp: Optional[str] = None
+    role = msg.get("role")
+    content = msg.get("content")
+
+    if role not in ("user", "assistant"):
+        raise ValueError(f"role harus 'user' atau 'assistant', bukan '{role}'")
+    if not content or not isinstance(content, str):
+        raise ValueError("content tidak boleh kosong")
+
+    return {
+        "role": role,
+        "content": content,
+        "timestamp": msg.get("timestamp")
+    }
+
+
+def validate_context_list(context_list: list) -> list[dict]:
+    """
+    Memvalidasi list context messages.
+
+    Args:
+        context_list: List dictionary context.
+
+    Returns:
+        List dictionary yang sudah tervalidasi.
+    """
+    if not isinstance(context_list, list):
+        return []
+    return [validate_context_message(msg) for msg in context_list]
