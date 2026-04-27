@@ -5,10 +5,9 @@ Menyediakan endpoint REST untuk menerima request dari API Gateway
 dan mengembalikan respons yang sudah diproses melalui pipeline.
 """
 
-import uuid
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Request
 from shared.errors.error_handler import setup_error_handlers
+from shared.schemas.chat_schema import parse_orchestrator_request, build_orchestrator_response
 from .config import HOST, PORT, DEBUG
 from .request_flow_controller import RequestFlowController
 
@@ -22,19 +21,6 @@ setup_error_handlers(app)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response Models
-# ---------------------------------------------------------------------------
-class OrchestratorRequest(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    message: str = Field(..., min_length=1, max_length=10000)
-    trace_id: str = Field(..., min_length=1)
-
-
-class OrchestratorResponse(BaseModel):
-    response_text: str
-
-
-# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -43,8 +29,8 @@ async def health():
     return {"status": "ok", "service": "orchestrator"}
 
 
-@app.post("/v1/orchestrator/chat", response_model=OrchestratorResponse)
-async def process_chat(request: OrchestratorRequest):
+@app.post("/v1/orchestrator/chat")
+async def process_chat(request: Request):
     """
     Proses chat request dari API Gateway.
     
@@ -55,12 +41,17 @@ async def process_chat(request: OrchestratorRequest):
     4. Format output via Response Service.
     """
     try:
+        body = await request.json()
+        parsed = parse_orchestrator_request(body)
+
         result = await flow_controller.process(
-            session_id=request.session_id,
-            message=request.message,
-            trace_id=request.trace_id
+            session_id=parsed["session_id"],
+            message=parsed["message"],
+            trace_id=parsed["trace_id"]
         )
-        return OrchestratorResponse(response_text=result["response_text"])
+        return build_orchestrator_response(result["response_text"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Orchestrator error: {str(e)}")
 
