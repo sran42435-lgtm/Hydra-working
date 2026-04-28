@@ -6,7 +6,6 @@
     <meta name="description" content="Hydra AI - Asisten AI cerdas untuk percakapan" />
     <title>Hydra AI - Phase 1</title>
     <style>
-      /* Reset & Base Styles */
       *, *::before, *::after {
         box-sizing: border-box;
         margin: 0;
@@ -25,12 +24,10 @@
         background-color: #0f172a;
         color: #f1f5f9;
       }
-      /* Animasi global untuk TypingStateIndicator */
       @keyframes typingBounce {
         0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
         30% { transform: translateY(-6px); opacity: 1; }
       }
-      /* Animasi global untuk Cursor di ResponseStreamRenderer */
       @keyframes blink {
         50% { opacity: 0; }
       }
@@ -38,5 +35,6 @@
   </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
