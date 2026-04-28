@@ -1,7 +1,6 @@
 /**
  * Chat Page Container - Phase 1
  * Container halaman chat dengan error boundary.
- * Di Phase 2+ dapat ditambahkan provider context, autentikasi guard, dll.
  */
 
 import React from "react";
