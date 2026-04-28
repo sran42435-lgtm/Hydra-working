@@ -16,7 +16,7 @@ export default defineConfig({
     proxy: {
       // Proxy semua request /api ke BFF Layer
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:8000",
         changeOrigin: true,
         secure: false,
       },
