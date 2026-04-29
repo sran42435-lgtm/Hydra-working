@@ -1,92 +1,66 @@
-/**
- * Chat Session Container - Phase 1
- * Container utama untuk sesi chat.
- * Menggabungkan MessageListView, ChatInputBar, dan AutoScrollController.
- * Menangani logika pengiriman pesan dan pembaruan state.
- */
-
-import React, { useCallback } from "react";
-import type { Message } from "../../types/chat.types";
-import { chatStore } from "../../store/chat_state_store";
-import { sessionStore } from "../../store/session_state_store";
-import { bffApiClient } from "../../services/bff_api_client";
+import React, { useState, useRef, useEffect } from "react";
 import { MessageListView } from "./MessageListView";
 import { ChatInputBar } from "./ChatInputBar";
-import { AutoScrollController } from "./AutoScrollController";
-import { useChatStore } from "./useChatStore";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
 
 export const ChatSessionContainer: React.FC = () => {
-  // Gunakan custom hook untuk membaca state secara reaktif
-  const { messages, isLoading } = useChatStore();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = useCallback(async (message: string) => {
-    // 1. Tambahkan pesan user secara optimistik
-    const userMessage: Message = {
+  const handleSend = async (text: string) => {
+    const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: message,
+      content: text,
       timestamp: new Date().toISOString(),
     };
-    chatStore.addMessage(userMessage);
-
-    // 2. Set loading true
-    chatStore.setLoading(true);
+    setMessages(prev => [...prev, userMsg]);
+    setLoading(true);
 
     try {
-      // 3. Kirim ke BFF Layer
-      const sessionId = sessionStore.getState().sessionId;
-      const response = await bffApiClient.chat({
-        message,
-        session_id: sessionId || undefined,
+      const res = await fetch("/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
       });
-
-      // 4. Simpan session_id jika baru
-      if (response.session_id && !sessionId) {
-        sessionStore.setSessionId(response.session_id);
-      }
-
-      // 5. Tambahkan pesan assistant
-      const assistantMessage: Message = {
+      const data = await res.json();
+      const aiMsg: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: response.response,
+        content: data.response || "(tidak ada balasan)",
         timestamp: new Date().toISOString(),
       };
-      chatStore.addMessage(assistantMessage);
-    } catch (error) {
-      // 6. Tambahkan pesan error
-      const errorMessage: Message = {
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (e) {
+      setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Maaf, terjadi kesalahan: ${error instanceof Error ? error.message : "Gagal mengirim pesan"}`,
+        content: "Error: " + String(e),
         timestamp: new Date().toISOString(),
-      };
-      chatStore.addMessage(errorMessage);
+      }]);
     } finally {
-      // 7. Set loading false
-      chatStore.setLoading(false);
+      setLoading(false);
     }
-  }, []);
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        backgroundColor: "#0f172a",
-      }}
-    >
-      <AutoScrollController dependency={messages.length}>
-        <MessageListView
-          messages={messages}
-          isTyping={isLoading}
-        />
-      </AutoScrollController>
-      <ChatInputBar
-        onSend={handleSend}
-        disabled={isLoading}
-      />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <MessageListView messages={messages} isTyping={loading} />
+        <div ref={chatEndRef} />
+      </div>
+      <ChatInputBar onSend={handleSend} disabled={loading} />
     </div>
   );
 };
