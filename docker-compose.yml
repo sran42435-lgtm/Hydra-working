@@ -1,1 +1,168 @@
+version: "3.8"
 
+# =============================================================================
+# Hydra AI - Phase 1 Docker Compose
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Memory System - Short-term memory storage
+  # ---------------------------------------------------------------------------
+  memory-system:
+    build:
+      context: .
+      dockerfile: deployment/docker/memory_system.Dockerfile
+    container_name: hydra-memory-system
+    environment:
+      - MEMORY_SYSTEM_HOST=0.0.0.0
+      - MEMORY_SYSTEM_PORT=8006
+      - MEMORY_SYSTEM_DATABASE_URL=sqlite:///./data/memory.db
+      - MEMORY_SYSTEM_MEMORY_TTL_HOURS=24
+      - MEMORY_SYSTEM_SHORT_TERM_LIMIT=50
+    volumes:
+      - ./data:/app/data
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Safety Pipeline - Input/Output content guard
+  # ---------------------------------------------------------------------------
+  safety-pipeline:
+    build:
+      context: .
+      dockerfile: deployment/docker/safety_pipeline.Dockerfile
+    container_name: hydra-safety-pipeline
+    environment:
+      - SAFETY_PIPELINE_HOST=0.0.0.0
+      - SAFETY_PIPELINE_PORT=8002
+      - SAFETY_PIPELINE_TOXICITY_THRESHOLD=0.7
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Model Service - LLM Inference
+  # ---------------------------------------------------------------------------
+  model-service:
+    build:
+      context: .
+      dockerfile: deployment/docker/model_service.Dockerfile
+    container_name: hydra-model-service
+    environment:
+      - MODEL_SERVICE_HOST=0.0.0.0
+      - MODEL_SERVICE_PORT=8004
+      - MODEL_SERVICE_MODEL_ID=hydra-base
+      - MODEL_SERVICE_MAX_TOKENS=1024
+      - MODEL_SERVICE_TEMPERATURE=0.7
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # AI Service - Prompt construction + safety output check
+  # ---------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: .
+      dockerfile: deployment/docker/ai_service.Dockerfile
+    container_name: hydra-ai-service
+    environment:
+      - AI_SERVICE_HOST=0.0.0.0
+      - AI_SERVICE_PORT=8003
+      - AI_SERVICE_MODEL_SERVICE_URL=http://model-service:8004
+      - AI_SERVICE_SAFETY_PIPELINE_URL=http://safety-pipeline:8002
+    depends_on:
+      - model-service
+      - safety-pipeline
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Response Service - Response formatting
+  # ---------------------------------------------------------------------------
+  response-service:
+    build:
+      context: .
+      dockerfile: deployment/docker/response_service.Dockerfile
+    container_name: hydra-response-service
+    environment:
+      - RESPONSE_SERVICE_HOST=0.0.0.0
+      - RESPONSE_SERVICE_PORT=8005
+      - RESPONSE_SERVICE_DEFAULT_FORMAT=json
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Orchestrator Service - Main chat flow controller
+  # ---------------------------------------------------------------------------
+  orchestrator:
+    build:
+      context: .
+      dockerfile: deployment/docker/orchestrator.Dockerfile
+    container_name: hydra-orchestrator
+    environment:
+      - ORCHESTRATOR_SERVICE_HOST=0.0.0.0
+      - ORCHESTRATOR_SERVICE_PORT=8001
+      - ORCHESTRATOR_SERVICE_AI_SERVICE_URL=http://ai-service:8003
+      - ORCHESTRATOR_SERVICE_MEMORY_SYSTEM_URL=http://memory-system:8006
+      - ORCHESTRATOR_SERVICE_RESPONSE_SERVICE_URL=http://response-service:8005
+    depends_on:
+      - ai-service
+      - memory-system
+      - response-service
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # API Gateway - Entry point, auth, rate limiting
+  # ---------------------------------------------------------------------------
+  api-gateway:
+    build:
+      context: .
+      dockerfile: deployment/docker/api_gateway.Dockerfile
+    container_name: hydra-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - API_GATEWAY_HOST=0.0.0.0
+      - API_GATEWAY_PORT=8000
+      - API_GATEWAY_SAFETY_PIPELINE_URL=http://safety-pipeline:8002
+      - API_GATEWAY_ORCHESTRATOR_URL=http://orchestrator:8001
+    depends_on:
+      - orchestrator
+      - safety-pipeline
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # BFF Layer - Backend for Frontend
+  # ---------------------------------------------------------------------------
+  bff-layer:
+    build:
+      context: .
+      dockerfile: deployment/docker/bff_layer.Dockerfile
+    container_name: hydra-bff-layer
+    ports:
+      - "3000:3000"
+    environment:
+      - BFF_LAYER_HOST=0.0.0.0
+      - BFF_LAYER_PORT=3000
+      - BFF_LAYER_API_GATEWAY_URL=http://api-gateway:8000
+    depends_on:
+      - api-gateway
+    networks:
+      - hydra-network
+    restart: unless-stopped
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  hydra-network:
+    driver: bridge
