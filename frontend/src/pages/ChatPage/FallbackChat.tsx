@@ -10,6 +10,12 @@ const SendIcon = () => (
   </svg>
 );
 
+const NewChatIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="20" height="20">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
+
 const FallbackChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -35,26 +41,54 @@ const FallbackChat: React.FC = () => {
     } finally { setLoading(false); }
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+  };
+
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   return (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "#f8f8f8", color: "#1a1a1a", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(0,0,0,0.05)", backgroundColor: "rgba(255,255,255,0.6)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", fontSize: 16, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-        <HydraIcon size={22} />
-        Hydra AI
-      </div>
-
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 12px", backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,255,255,0.5) 0%, #f8f8f8 70%)" }}>
-        {messages.length === 0 && (
-          <div style={{
+      {/* Header */}
+      <div style={{
+        padding: "12px 16px",
+        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        backgroundColor: "rgba(255,255,255,0.6)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        fontSize: 16,
+        fontWeight: 700,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <HydraIcon size={22} />
+          Hydra AI
+        </div>
+        {/* Tombol New Chat di kanan atas (fallback) */}
+        <button
+          onClick={handleNewChat}
+          style={{
+            background: "none",
+            border: "1px solid #e5e5e5",
+            borderRadius: 8,
+            padding: "4px 8px",
+            cursor: "pointer",
+            color: "#1a1a1a",
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            height: "100%",
-            color: "#999",
-            textAlign: "center",
-          }}>
+          }}
+        >
+          <NewChatIcon />
+        </button>
+      </div>
+
+      {/* Area pesan */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 12px", backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,255,255,0.5) 0%, #f8f8f8 70%)" }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: "center", color: "#999", marginTop: "40%" }}>
             <HydraIcon size={48} />
             <p style={{ marginTop: 12 }}>Kirim pesan untuk memulai</p>
           </div>
@@ -79,6 +113,7 @@ const FallbackChat: React.FC = () => {
         <div ref={chatEndRef} style={{ height: 8 }} />
       </div>
 
+      {/* Input bar */}
       <div style={{
         padding: "8px 16px 16px",
         display: "flex",

@@ -12,6 +12,12 @@ const HamburgerIcon = () => (
   </svg>
 );
 
+const NewChatIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" width="20" height="20">
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+  </svg>
+);
+
 export const ChatPageMain: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -33,6 +39,7 @@ export const ChatPageMain: React.FC = () => {
 
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
+      {/* Overlay */}
       <div
         onClick={() => setSidebarOpen(false)}
         style={{
@@ -42,6 +49,7 @@ export const ChatPageMain: React.FC = () => {
           transition: "opacity 0.3s ease, visibility 0.3s ease",
         }}
       />
+      {/* Sidebar */}
       <div style={{
         width: 260, flexShrink: 0, height: "100%",
         position: isMobile ? "fixed" : "relative", left: 0, top: 0, bottom: 0, zIndex: 20,
@@ -51,26 +59,57 @@ export const ChatPageMain: React.FC = () => {
       }}>
         <ChatPageSidebar onNewChat={handleNewChat} />
       </div>
+      {/* Main chat area */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {isMobile && (
           <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", borderBottom: "1px solid #e5e5e5", backgroundColor: "#fff" }}>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ background: "none", border: "none", color: "#1a1a1a", cursor: "pointer", padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <HamburgerIcon />
+            </button>
+            <HydraIcon size={20} />
+            <span style={{ color: "#1a1a1a", marginLeft: 6, fontWeight: 600, flex: 1 }}>Hydra AI</span>
+            {/* Tombol New Chat di kanan atas (mobile) */}
+            <button
+              onClick={handleNewChat}
               style={{
                 background: "none",
-                border: "none",
-                color: "#1a1a1a",
-                cursor: "pointer",
+                border: "1px solid #e5e5e5",
+                borderRadius: 8,
                 padding: "4px 8px",
+                cursor: "pointer",
+                color: "#1a1a1a",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <HamburgerIcon />
+              <NewChatIcon />
             </button>
-            <HydraIcon size={20} />
-            <span style={{ color: "#1a1a1a", marginLeft: 6, fontWeight: 600 }}>Hydra AI</span>
+          </div>
+        )}
+        {!isMobile && (
+          <div style={{ padding: "8px 16px", display: "flex", alignItems: "center", borderBottom: "1px solid #e5e5e5", backgroundColor: "#fff" }}>
+            <span style={{ color: "#1a1a1a", fontWeight: 600, flex: 1 }}>Hydra AI</span>
+            {/* Tombol New Chat di kanan atas (desktop) */}
+            <button
+              onClick={handleNewChat}
+              style={{
+                background: "none",
+                border: "1px solid #e5e5e5",
+                borderRadius: 8,
+                padding: "4px 8px",
+                cursor: "pointer",
+                color: "#1a1a1a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <NewChatIcon />
+            </button>
           </div>
         )}
         <ChatSessionContainer />
