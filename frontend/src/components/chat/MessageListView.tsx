@@ -1,61 +1,35 @@
-/**
- * Message List View - Phase 1
- * Menampilkan daftar semua pesan dalam percakapan.
- * Menggunakan MessageBubbleView untuk setiap pesan.
- */
+import React, { useEffect, useState } from "react";
+import { chatStore, Message } from "../../store/chat_state_store";
 
-import React from "react";
-import type { Message } from "../../types/chat.types";
-import { MessageBubbleView } from "./MessageBubbleView";
-import { TypingStateIndicator } from "./TypingStateIndicator";
+export const MessageListView: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
 
-export interface MessageListViewProps {
-  messages: Message[];
-  isTyping: boolean;
-}
+  useEffect(() => {
+    const unsubscribe = chatStore.subscribe(() => {
+      setMessages([...chatStore.getState().messages]);
+    });
+    return unsubscribe;
+  }, []);
 
-export const MessageListView: React.FC<MessageListViewProps> = ({
-  messages,
-  isTyping,
-}) => {
   return (
-    <div
-      style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "16px 0",
-        backgroundColor: "#0f172a",
-      }}
-    >
-      {messages.length === 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            color: "#64748b",
-            fontSize: "16px",
-            padding: "0 32px",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ fontSize: "48px", marginBottom: "12px" }}>🐉</p>
-          <p style={{ fontWeight: 600, marginBottom: "4px", color: "#94a3b8" }}>
-            Hydra AI
-          </p>
-          <p style={{ margin: 0 }}>
-            Kirim pesan untuk memulai percakapan
-          </p>
-        </div>
-      )}
-
+    <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
       {messages.map((msg) => (
-        <MessageBubbleView key={msg.id} message={msg} />
+        <div key={msg.id} style={{
+          marginBottom: 10,
+          display: "flex",
+          justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+        }}>
+          <div style={{
+            maxWidth: "75%",
+            padding: "8px 14px",
+            borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+            backgroundColor: msg.role === "user" ? "#3b82f6" : "#1e293b",
+            color: "#f1f5f9",
+          }}>
+            {msg.content}
+          </div>
+        </div>
       ))}
-
-      <TypingStateIndicator isTyping={isTyping} />
     </div>
   );
 };

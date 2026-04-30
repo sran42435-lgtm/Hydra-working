@@ -1,67 +1,72 @@
-/**
- * Chat State Store - Phase 1
- * Menyimpan state chat: daftar pesan, status loading, dan error.
- * Diimplementasikan dengan simple reactive store (tanpa library eksternal).
- */
+type Role = "user" | "assistant";
 
-import type { Message } from "../types/chat.types";
+export type Message = {
+  id: string;
+  role: Role;
+  content: string;
+};
+
+type ChatState = {
+  messages: Message[];
+  isLoading: boolean;
+};
 
 type Listener = () => void;
 
-interface ChatState {
-  messages: Message[];
-  isLoading: boolean;
-  error: string | null;
-}
+class ChatStore {
+  private state: ChatState = {
+    messages: [],
+    isLoading: false,
+  };
 
-const initialState: ChatState = {
-  messages: [],
-  isLoading: false,
-  error: null,
-};
+  private listeners: Listener[] = [];
 
-let state: ChatState = { ...initialState };
-const listeners: Set<Listener> = new Set();
-
-function notify(): void {
-  listeners.forEach((fn) => fn());
-}
-
-export const chatStore = {
   getState(): ChatState {
-    return state;
-  },
+    return this.state;
+  }
 
   subscribe(listener: Listener): () => void {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
-
-  addMessage(message: Message): void {
-    state = {
-      ...state,
-      messages: [...state.messages, message],
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
     };
-    notify();
-  },
+  }
 
-  setLoading(loading: boolean): void {
-    state = { ...state, isLoading: loading };
-    notify();
-  },
+  private emit() {
+    this.listeners.forEach((listener) => listener());
+  }
 
-  setError(error: string | null): void {
-    state = { ...state, error };
-    notify();
-  },
+  addMessage(message: Message) {
+    this.state = {
+      ...this.state,
+      messages: [...this.state.messages, message],
+    };
+    this.emit();
+  }
 
-  clearMessages(): void {
-    state = { ...state, messages: [] };
-    notify();
-  },
+  setMessages(messages: Message[]) {
+    this.state = {
+      ...this.state,
+      messages: [...messages],
+    };
+    this.emit();
+  }
 
-  reset(): void {
-    state = { ...initialState };
-    notify();
-  },
-};
+  setLoading(isLoading: boolean) {
+    this.state = {
+      ...this.state,
+      isLoading,
+    };
+    this.emit();
+  }
+
+  clearMessages() {
+    this.state = {
+      ...this.state,
+      messages: [],
+    };
+    this.emit();
+  }
+}
+
+export const chatStore = new ChatStore();
