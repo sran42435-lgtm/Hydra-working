@@ -5,14 +5,9 @@ import { MessageListView } from "./MessageListView";
 
 export const ChatSessionContainer: React.FC = () => {
   const handleSend = async (text: string) => {
-    const userMessage = {
-      id: Date.now().toString(),
-      role: "user" as const,
-      content: text,
-    };
+    const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
     chatStore.setLoading(true);
-
     try {
       const res = await fetch("/api/v1/chat", {
         method: "POST",
@@ -26,7 +21,6 @@ export const ChatSessionContainer: React.FC = () => {
         content: data.response || "(tidak ada balasan)",
       });
     } catch (err) {
-      console.error(err);
       chatStore.addMessage({
         id: Date.now().toString() + "_err",
         role: "assistant",
@@ -38,7 +32,12 @@ export const ChatSessionContainer: React.FC = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      backgroundColor: "transparent",
+    }}>
       <MessageListView />
       <ChatInputBar onSend={handleSend} disabled={chatStore.getState().isLoading} />
     </div>
