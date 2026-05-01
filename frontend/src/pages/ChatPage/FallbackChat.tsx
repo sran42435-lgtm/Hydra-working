@@ -66,13 +66,12 @@ const FallbackChat: React.FC = () => {
           <HydraIcon size={22} />
           Hydra AI
         </div>
-        {/* Tombol New Chat di kanan atas (fallback) */}
+        {/* Tombol New Chat di kanan atas (fallback) - tanpa kotak */}
         <button
           onClick={handleNewChat}
           style={{
             background: "none",
-            border: "1px solid #e5e5e5",
-            borderRadius: 8,
+            border: "none",
             padding: "4px 8px",
             cursor: "pointer",
             color: "#1a1a1a",

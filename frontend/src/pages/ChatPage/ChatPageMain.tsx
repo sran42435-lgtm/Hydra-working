@@ -71,13 +71,12 @@ export const ChatPageMain: React.FC = () => {
             </button>
             <HydraIcon size={20} />
             <span style={{ color: "#1a1a1a", marginLeft: 6, fontWeight: 600, flex: 1 }}>Hydra AI</span>
-            {/* Tombol New Chat di kanan atas (mobile) */}
+            {/* Tombol New Chat di kanan atas (mobile) - tanpa kotak */}
             <button
               onClick={handleNewChat}
               style={{
                 background: "none",
-                border: "1px solid #e5e5e5",
-                borderRadius: 8,
+                border: "none",
                 padding: "4px 8px",
                 cursor: "pointer",
                 color: "#1a1a1a",
@@ -93,13 +92,12 @@ export const ChatPageMain: React.FC = () => {
         {!isMobile && (
           <div style={{ padding: "8px 16px", display: "flex", alignItems: "center", borderBottom: "1px solid #e5e5e5", backgroundColor: "#fff" }}>
             <span style={{ color: "#1a1a1a", fontWeight: 600, flex: 1 }}>Hydra AI</span>
-            {/* Tombol New Chat di kanan atas (desktop) */}
+            {/* Tombol New Chat di kanan atas (desktop) - tanpa kotak */}
             <button
               onClick={handleNewChat}
               style={{
                 background: "none",
-                border: "1px solid #e5e5e5",
-                borderRadius: 8,
+                border: "none",
                 padding: "4px 8px",
                 cursor: "pointer",
                 color: "#1a1a1a",
