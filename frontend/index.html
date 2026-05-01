@@ -4,27 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hydra AI</title>
+  <!-- Impor font Outfit (weight 900) -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after {
       box-sizing: border-box; margin: 0; padding: 0;
-      /* Hapus highlight sentuhan (mobile) */
       -webkit-tap-highlight-color: transparent;
       -webkit-touch-callout: none;
     }
     html, body, #root { height: 100%; width: 100%; overflow: hidden; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      /* Set font Outfit sebagai default, dengan fallback */
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
         Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
       background: #f8f8f8; color: #1a1a1a;
     }
-    /* Hilangkan outline fokus */
     button:focus,
     input:focus,
     textarea:focus,
     select:focus {
       outline: none !important;
     }
-    /* Hapus latar autofill */
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus {

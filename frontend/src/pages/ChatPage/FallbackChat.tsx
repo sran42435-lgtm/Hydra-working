@@ -101,7 +101,11 @@ const FallbackChat: React.FC = () => {
               color: m.role === "user" ? "#fff" : "#1a1a1a",
               borderTopRightRadius: m.role === "user" ? 4 : 20,
               borderTopLeftRadius: m.role === "user" ? 20 : 4,
-              fontSize: 14, lineHeight: 1.5, wordBreak: "break-word",
+              /* Ubah font, size, dan weight di sini */
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 22,
+              fontWeight: 900,
+              lineHeight: 1.5, wordBreak: "break-word",
               boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
               border: "1px solid rgba(255,255,255,0.5)",
             }}>
