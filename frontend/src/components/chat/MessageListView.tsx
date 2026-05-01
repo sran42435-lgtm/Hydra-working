@@ -16,7 +16,7 @@ export const MessageListView: React.FC = () => {
     <div style={{
       flex: 1,
       overflowY: "auto",
-      padding: 16,
+      padding: "16px 16px 8px",
       backgroundColor: "transparent",
       backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,255,255,0.5) 0%, #f8f8f8 70%)",
     }}>
@@ -52,7 +52,9 @@ export const MessageListView: React.FC = () => {
             color: msg.role === "user" ? "#fff" : "#1a1a1a",
             borderTopRightRadius: msg.role === "user" ? 4 : 20,
             borderTopLeftRadius: msg.role === "user" ? 20 : 4,
-            fontSize: 14,
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: 18,           // diperkecil dari 22 menjadi 18
+            fontWeight: 900,
             lineHeight: 1.5,
             wordBreak: "break-word",
             boxShadow: "0 8px 24px rgba(0,0,0,0.05)",

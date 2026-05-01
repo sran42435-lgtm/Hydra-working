@@ -6,7 +6,7 @@ interface ChatInputBarProps {
 }
 
 const SendIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13" />
     <polygon points="22 2 15 22 11 13 2 9 22 2" />
   </svg>
@@ -25,9 +25,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
 
   return (
     <div style={{
-      padding: "8px 16px 16px",
+      padding: "0 16px 16px",
       display: "flex",
       justifyContent: "center",
+      backgroundColor: "transparent",
     }}>
       <div style={{
         width: "100%",
@@ -40,7 +41,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
         borderRadius: 30,
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
         border: "1px solid rgba(0,0,0,0.04)",
-        padding: "4px",
+        padding: "4px 4px 4px 16px", // padding kiri lebih besar, kanan kecil
+        gap: 4, // jarak antara input dan tombol
       }}>
         <input
           ref={inputRef}
@@ -51,21 +53,23 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
           disabled={disabled}
           style={{
             flex: 1,
-            padding: "10px 44px 10px 18px",
+            padding: "8px 4px 8px 0", // padding kanan 0 agar dekat tombol
             borderRadius: 26,
             border: "none",
             backgroundColor: "transparent",
             color: "#1a1a1a",
-            fontSize: 14,
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: 16,
             outline: "none",
+            minWidth: 0, // penting agar flex shrink bekerja
           }}
         />
         <button
           onClick={handleSend}
           disabled={disabled}
           style={{
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             borderRadius: "50%",
             border: "none",
             backgroundColor: disabled ? "#ccc" : "#E07B5A",
@@ -76,7 +80,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
             cursor: disabled ? "not-allowed" : "pointer",
             boxShadow: "0 4px 12px rgba(224,123,90,0.25)",
             flexShrink: 0,
-            marginRight: 2,
           }}
         >
           <SendIcon />
