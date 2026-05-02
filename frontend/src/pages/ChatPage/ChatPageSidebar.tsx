@@ -10,61 +10,104 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef<number>(0);
   const currentX = useRef<number>(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const rafId = useRef<number | null>(null);
 
-  // Handle touch start (mobile)
+  const forceReflow = () => {
+    if (sidebarRef.current) {
+      window.getComputedStyle(sidebarRef.current).transform;
+    }
+  };
+
+  const resetPosition = () => {
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      setOffsetX(0);
+      forceReflow();
+      rafId.current = null;
+    });
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     startX.current = touch.clientX;
     currentX.current = touch.clientX;
     setIsDragging(true);
+    setOffsetX(0);
+    if (rafId.current) cancelAnimationFrame(rafId.current);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
     const touch = e.touches[0];
     currentX.current = touch.clientX;
-    // Jika tergeser ke kiri cukup jauh, tutup panel
-    if (startX.current - currentX.current > 50) {
-      // Fungsi untuk menutup panel (dari parent)
+    const diff = currentX.current - startX.current;
+    setOffsetX(diff);
+    if (diff < -100) {
       const closeEvent = new CustomEvent('closeSidebar');
       document.dispatchEvent(closeEvent);
       setIsDragging(false);
+      resetPosition();
     }
   };
 
   const handleTouchEnd = () => {
-    setIsDragging(false);
+    if (isDragging) {
+      setIsDragging(false);
+      if (offsetX > -100) {
+        resetPosition();
+      }
+    }
   };
 
-  // Handle mouse (desktop)
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     startX.current = e.clientX;
     currentX.current = e.clientX;
+    setOffsetX(0);
+    if (rafId.current) cancelAnimationFrame(rafId.current);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
     currentX.current = e.clientX;
-    if (startX.current - currentX.current > 50) {
+    const diff = currentX.current - startX.current;
+    setOffsetX(diff);
+    if (diff < -100) {
       const closeEvent = new CustomEvent('closeSidebar');
       document.dispatchEvent(closeEvent);
       setIsDragging(false);
+      resetPosition();
     }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    if (isDragging) {
+      setIsDragging(false);
+      if (offsetX > -100) {
+        resetPosition();
+      }
+    }
   };
 
-  // Listen to close event from parent
   useEffect(() => {
     const handleClose = () => {
-      // Parent akan menangani close, ini hanya trigger
+      resetPosition();
     };
     document.addEventListener('closeSidebar', handleClose);
     return () => document.removeEventListener('closeSidebar', handleClose);
   }, []);
+
+  useEffect(() => {
+    const handleBlur = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        resetPosition();
+      }
+    };
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, [isDragging]);
 
   return (
     <div
@@ -72,15 +115,18 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.85)", // transparan agar ada efek blur
-        backdropFilter: "blur(16px)",                // efek blur untuk konten di belakang
-        WebkitBackdropFilter: "blur(16px)",
+        backgroundColor: "rgba(255, 255, 255, 0.98)", // Ganti backdrop-filter dengan ini
         padding: "16px",
         display: "flex",
         flexDirection: "column",
         position: "relative",
         overflow: "hidden",
-        borderRight: "1px solid rgba(0,0,0,0.05)",   // garis tipis pemisah
+        borderRight: "1px solid rgba(0,0,0,0.05)",
+        transform: `translateX(${offsetX}px)`,
+        willChange: "transform",
+        backfaceVisibility: "hidden",
+        transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        touchAction: "none",
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -89,6 +135,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Gagang geser di tepi kanan */}
       <div
