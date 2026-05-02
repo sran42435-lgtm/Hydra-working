@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { ChatPageSidebar } from "./ChatPageSidebar";
 import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
 import { chatStore } from "../../store/chat_state_store";
-import { HydraIcon } from "../../components/ui/HydraIcon";
 
 const HamburgerIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -37,9 +36,69 @@ export const ChatPageMain: React.FC = () => {
     if (isMobile) setSidebarOpen(false);
   };
 
+  // Listen to closeSidebar event from drag handle
+  useEffect(() => {
+    const handleCloseSidebar = () => {
+      setSidebarOpen(false);
+    };
+    document.addEventListener('closeSidebar', handleCloseSidebar);
+    return () => document.removeEventListener('closeSidebar', handleCloseSidebar);
+  }, []);
+
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
-      {/* Overlay */}
+      
+      {/* Floating Icons - z-index 5 */}
+      {isMobile && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            zIndex: 5,
+            background: "rgba(255,255,255,0.6)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            border: "1px solid rgba(0,0,0,0.04)",
+            borderRadius: "50%",
+            padding: "6px",
+            color: "#1a1a1a",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+          }}
+        >
+          <HamburgerIcon />
+        </button>
+      )}
+      <button
+        onClick={handleNewChat}
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 5,
+          background: "rgba(255,255,255,0.6)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: "1px solid rgba(0,0,0,0.04)",
+          borderRadius: "50%",
+          padding: "6px",
+          color: "#1a1a1a",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        }}
+      >
+        <NewChatIcon />
+      </button>
+
+      {/* Overlay - z-index 10 */}
       <div
         onClick={() => setSidebarOpen(false)}
         style={{
@@ -47,9 +106,11 @@ export const ChatPageMain: React.FC = () => {
           opacity: isMobile && sidebarOpen ? 1 : 0,
           visibility: isMobile && sidebarOpen ? "visible" : "hidden",
           transition: "opacity 0.3s ease, visibility 0.3s ease",
+          pointerEvents: isMobile && sidebarOpen ? "auto" : "none",
         }}
       />
-      {/* Sidebar */}
+
+      {/* Sidebar - z-index 20 */}
       <div style={{
         width: 260, flexShrink: 0, height: "100%",
         position: isMobile ? "fixed" : "relative", left: 0, top: 0, bottom: 0, zIndex: 20,
@@ -59,57 +120,9 @@ export const ChatPageMain: React.FC = () => {
       }}>
         <ChatPageSidebar onNewChat={handleNewChat} />
       </div>
+      
       {/* Main chat area */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {isMobile && (
-          <div style={{ padding: "8px 12px", display: "flex", alignItems: "center", borderBottom: "1px solid #e5e5e5", backgroundColor: "#fff" }}>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              style={{ background: "none", border: "none", color: "#1a1a1a", cursor: "pointer", padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <HamburgerIcon />
-            </button>
-            <HydraIcon size={20} />
-            <span style={{ color: "#1a1a1a", marginLeft: 6, fontWeight: 600, flex: 1 }}>Hydra AI</span>
-            {/* Tombol New Chat di kanan atas (mobile) - tanpa kotak */}
-            <button
-              onClick={handleNewChat}
-              style={{
-                background: "none",
-                border: "none",
-                padding: "4px 8px",
-                cursor: "pointer",
-                color: "#1a1a1a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <NewChatIcon />
-            </button>
-          </div>
-        )}
-        {!isMobile && (
-          <div style={{ padding: "8px 16px", display: "flex", alignItems: "center", borderBottom: "1px solid #e5e5e5", backgroundColor: "#fff" }}>
-            <span style={{ color: "#1a1a1a", fontWeight: 600, flex: 1 }}>Hydra AI</span>
-            {/* Tombol New Chat di kanan atas (desktop) - tanpa kotak */}
-            <button
-              onClick={handleNewChat}
-              style={{
-                background: "none",
-                border: "none",
-                padding: "4px 8px",
-                cursor: "pointer",
-                color: "#1a1a1a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <NewChatIcon />
-            </button>
-          </div>
-        )}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         <ChatSessionContainer />
       </div>
     </div>

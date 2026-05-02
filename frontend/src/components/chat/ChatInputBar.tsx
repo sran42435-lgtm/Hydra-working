@@ -36,13 +36,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
         display: "flex",
         alignItems: "center",
         backgroundColor: "rgba(255,255,255,0.8)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
+        backdropFilter: "blur(24px)",   // Ditingkatkan ke 24px
+        WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
         border: "1px solid rgba(0,0,0,0.04)",
-        padding: "4px 4px 4px 16px", // padding kiri lebih besar, kanan kecil
-        gap: 4, // jarak antara input dan tombol
+        padding: "4px 4px 4px 16px",
+        gap: 4,
       }}>
         <input
           ref={inputRef}
@@ -53,7 +53,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
           disabled={disabled}
           style={{
             flex: 1,
-            padding: "8px 4px 8px 0", // padding kanan 0 agar dekat tombol
+            padding: "8px 4px 8px 0",
             borderRadius: 26,
             border: "none",
             backgroundColor: "transparent",
@@ -61,7 +61,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
             fontFamily: "'Outfit', sans-serif",
             fontSize: 16,
             outline: "none",
-            minWidth: 0, // penting agar flex shrink bekerja
+            minWidth: 0,
           }}
         />
         <button

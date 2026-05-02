@@ -52,32 +52,24 @@ const FallbackChat: React.FC = () => {
       {/* Header */}
       <div style={{
         padding: "12px 16px",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
-        backgroundColor: "rgba(255,255,255,0.6)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        fontSize: 16,
-        fontWeight: 700,
+        backgroundColor: "#f8f8f8", // Samakan dengan background
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <HydraIcon size={22} />
-          Hydra AI
-        </div>
-        {/* Tombol New Chat di kanan atas (fallback) - tanpa kotak */}
         <button
           onClick={handleNewChat}
           style={{
             background: "none",
-            border: "none",
-            padding: "4px 8px",
+            border: "1px solid rgba(0,0,0,0.1)", // Garis tepi lingkaran
             cursor: "pointer",
             color: "#1a1a1a",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            borderRadius: "50%",
+            padding: "8px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.05)", // Bayangan ringan
           }}
         >
           <NewChatIcon />
@@ -101,13 +93,12 @@ const FallbackChat: React.FC = () => {
               color: m.role === "user" ? "#fff" : "#1a1a1a",
               borderTopRightRadius: m.role === "user" ? 4 : 20,
               borderTopLeftRadius: m.role === "user" ? 20 : 4,
-              /* Ubah font, size, dan weight di sini */
               fontFamily: "'Outfit', sans-serif",
-              fontSize: 22,
-              fontWeight: 900,
-              lineHeight: 1.5, wordBreak: "break-word",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
+              fontSize: 18, lineHeight: 1.5, wordBreak: "break-word",
               border: "1px solid rgba(255,255,255,0.5)",
+              boxShadow: m.role === "user"
+                ? "0 4px 12px rgba(0,0,0,0.15)"
+                : "0 8px 24px rgba(0,0,0,0.05)",
             }}>
               {m.content}
             </div>
@@ -118,9 +109,10 @@ const FallbackChat: React.FC = () => {
 
       {/* Input bar */}
       <div style={{
-        padding: "8px 16px 16px",
+        padding: "0 16px 16px",
         display: "flex",
         justifyContent: "center",
+        backgroundColor: "transparent",
       }}>
         <div style={{
           width: "100%",
@@ -133,7 +125,8 @@ const FallbackChat: React.FC = () => {
           borderRadius: 30,
           boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
           border: "1px solid rgba(0,0,0,0.04)",
-          padding: "4px",
+          padding: "4px 4px 4px 16px",
+          gap: 4,
         }}>
           <input
             value={input}
@@ -143,13 +136,15 @@ const FallbackChat: React.FC = () => {
             disabled={loading}
             style={{
               flex: 1,
-              padding: "10px 44px 10px 18px",
+              padding: "8px 4px 8px 0",
               borderRadius: 26,
               border: "none",
               backgroundColor: "transparent",
               color: "#1a1a1a",
-              fontSize: 14,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: 16,
               outline: "none",
+              minWidth: 0,
             }}
           />
           <button
@@ -168,7 +163,6 @@ const FallbackChat: React.FC = () => {
               cursor: loading ? "not-allowed" : "pointer",
               boxShadow: "0 4px 12px rgba(224,123,90,0.25)",
               flexShrink: 0,
-              marginRight: 2,
             }}
           >
             <SendIcon />

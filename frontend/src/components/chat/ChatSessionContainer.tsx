@@ -37,9 +37,26 @@ export const ChatSessionContainer: React.FC = () => {
       flexDirection: "column",
       height: "100%",
       backgroundColor: "transparent",
+      position: "relative",
     }}>
       <MessageListView />
-      <ChatInputBar onSend={handleSend} disabled={chatStore.getState().isLoading} />
+      {/* Input bar fixed di bawah dengan z-index rendah */}
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 5,  // Turunkan z-index agar di bawah overlay (10)
+        pointerEvents: "none",
+      }}>
+        <div style={{
+          pointerEvents: "auto",
+          maxWidth: "100%",
+          margin: "0 auto",
+        }}>
+          <ChatInputBar onSend={handleSend} disabled={chatStore.getState().isLoading} />
+        </div>
+      </div>
     </div>
   );
 };
