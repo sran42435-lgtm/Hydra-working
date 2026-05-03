@@ -2,9 +2,10 @@ import React, { useRef, useState, useEffect } from "react";
 
 interface ChatPageSidebarProps {
   onNewChat: () => void;
+  isMobile: boolean;
 }
 
-export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) => {
+export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat, isMobile }) => {
   const [history, setHistory] = useState<string[]>(["Chat tentang AI", "Cara membuat kue", "Resep masakan"]);
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef<number>(0);
@@ -88,7 +89,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
         display: "flex",
         flexDirection: "column",
         borderRight: "1px solid rgba(0,0,0,0.05)",
-        transform: "none", // Tidak ada transformasi
+        transform: "none",
         position: "relative",
       }}
       onTouchStart={handleTouchStart}
@@ -100,21 +101,23 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
       onMouseLeave={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Gagang geser di tepi kanan */}
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: "6px",
-          height: "80px",
-          backgroundColor: "rgba(0,0,0,0.1)",
-          borderRadius: "4px",
-          cursor: "ew-resize",
-          touchAction: "none",
-        }}
-      />
+      {/* Gagang geser - Hanya muncul di Mobile */}
+      {isMobile && (
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "6px",
+            height: "80px",
+            backgroundColor: "rgba(0,0,0,0.1)",
+            borderRadius: "4px",
+            cursor: "ew-resize",
+            touchAction: "none",
+          }}
+        />
+      )}
 
       <div style={{ marginBottom: 24 }}>
         <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginBottom: 8 }}>Hydra AI</h3>
@@ -166,3 +169,5 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
     </div>
   );
 };
+
+export default ChatPageSidebar;

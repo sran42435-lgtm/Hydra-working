@@ -3,7 +3,11 @@ import { chatStore } from "../../store/chat_state_store";
 import { ChatInputBar } from "./ChatInputBar";
 import { MessageListView } from "./MessageListView";
 
-export const ChatSessionContainer: React.FC = () => {
+interface ChatSessionContainerProps {
+  isDesktop?: boolean;
+}
+
+export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
   const handleSend = async (text: string) => {
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
@@ -40,7 +44,7 @@ export const ChatSessionContainer: React.FC = () => {
       position: "relative",
     }}>
       <MessageListView />
-      {/* Input bar fixed di bawah dengan z-index rendah */}
+      {/* Input bar fixed di bawah */}
       <div style={{
         position: "fixed",
         bottom: 0,
@@ -48,7 +52,9 @@ export const ChatSessionContainer: React.FC = () => {
         right: 0,
         zIndex: 5,
         pointerEvents: "none",
-        backgroundColor: "transparent", // Pastikan tidak ada background yang mengganggu
+        paddingLeft: isDesktop ? "260px" : "0", // Geser ke kanan di Desktop agar tidak masuk panel
+        transition: "padding-left 0.3s ease",
+        backgroundColor: "transparent",
       }}>
         <div style={{
           pointerEvents: "auto",

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChatPageSidebar } from "./ChatPageSidebar"; // Gunakan kurung kurawal
+import ChatPageSidebar from "./ChatPageSidebar";
 import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
 import { chatStore } from "../../store/chat_state_store";
 
@@ -48,7 +48,7 @@ export const ChatPageMain: React.FC = () => {
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
-      {/* Floating Icons - z-index 5 */}
+      {/* Hamburger Icon - Hanya Mobile */}
       {isMobile && (
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -74,6 +74,8 @@ export const ChatPageMain: React.FC = () => {
           <HamburgerIcon />
         </button>
       )}
+      
+      {/* New Chat Icon - Tampil di Mobile dan Desktop */}
       <button
         onClick={handleNewChat}
         style={{
@@ -110,7 +112,7 @@ export const ChatPageMain: React.FC = () => {
         }}
       />
 
-      {/* Sidebar Wrapper - ini yang bergerak */}
+      {/* Sidebar Wrapper */}
       <div style={{
         width: 260,
         height: "100%",
@@ -123,12 +125,12 @@ export const ChatPageMain: React.FC = () => {
         transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         willChange: "transform",
       }}>
-        <ChatPageSidebar onNewChat={handleNewChat} />
+        <ChatPageSidebar onNewChat={handleNewChat} isMobile={isMobile} />
       </div>
       
       {/* Main chat area */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        <ChatSessionContainer />
+        <ChatSessionContainer isDesktop={!isMobile} />
       </div>
     </div>
   );
