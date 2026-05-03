@@ -6,42 +6,25 @@ interface ChatPageSidebarProps {
 
 export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) => {
   const [history, setHistory] = useState<string[]>(["Chat tentang AI", "Cara membuat kue", "Resep masakan"]);
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef<number>(0);
-  const currentX = useRef<number>(0);
   const [offsetX, setOffsetX] = useState(0);
-  const rafId = useRef<number | null>(null);
-
-  const forceReflow = () => {
-    if (sidebarRef.current) {
-      window.getComputedStyle(sidebarRef.current).transform;
-    }
-  };
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const resetPosition = () => {
-    if (rafId.current) cancelAnimationFrame(rafId.current);
-    rafId.current = requestAnimationFrame(() => {
-      setOffsetX(0);
-      forceReflow();
-      rafId.current = null;
-    });
+    setOffsetX(0);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     startX.current = touch.clientX;
-    currentX.current = touch.clientX;
     setIsDragging(true);
-    setOffsetX(0);
-    if (rafId.current) cancelAnimationFrame(rafId.current);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
     const touch = e.touches[0];
-    currentX.current = touch.clientX;
-    const diff = currentX.current - startX.current;
+    const diff = touch.clientX - startX.current;
     setOffsetX(diff);
     if (diff < -100) {
       const closeEvent = new CustomEvent('closeSidebar');
@@ -63,15 +46,11 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     startX.current = e.clientX;
-    currentX.current = e.clientX;
-    setOffsetX(0);
-    if (rafId.current) cancelAnimationFrame(rafId.current);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    currentX.current = e.clientX;
-    const diff = currentX.current - startX.current;
+    const diff = e.clientX - startX.current;
     setOffsetX(diff);
     if (diff < -100) {
       const closeEvent = new CustomEvent('closeSidebar');
@@ -98,35 +77,19 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat }) =
     return () => document.removeEventListener('closeSidebar', handleClose);
   }, []);
 
-  useEffect(() => {
-    const handleBlur = () => {
-      if (isDragging) {
-        setIsDragging(false);
-        resetPosition();
-      }
-    };
-    window.addEventListener('blur', handleBlur);
-    return () => window.removeEventListener('blur', handleBlur);
-  }, [isDragging]);
-
   return (
     <div
       ref={sidebarRef}
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.98)", // Ganti backdrop-filter dengan ini
+        backgroundColor: "rgba(255, 255, 255, 0.98)",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
-        position: "relative",
-        overflow: "hidden",
         borderRight: "1px solid rgba(0,0,0,0.05)",
-        transform: `translateX(${offsetX}px)`,
-        willChange: "transform",
-        backfaceVisibility: "hidden",
-        transition: isDragging ? "none" : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        touchAction: "none",
+        transform: "none", // Tidak ada transformasi
+        position: "relative",
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

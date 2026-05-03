@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ChatPageSidebar } from "./ChatPageSidebar";
+import { ChatPageSidebar } from "./ChatPageSidebar"; // Gunakan kurung kurawal
 import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
 import { chatStore } from "../../store/chat_state_store";
 
@@ -110,13 +110,18 @@ export const ChatPageMain: React.FC = () => {
         }}
       />
 
-      {/* Sidebar - z-index 20 */}
+      {/* Sidebar Wrapper - ini yang bergerak */}
       <div style={{
-        width: 260, flexShrink: 0, height: "100%",
-        position: isMobile ? "fixed" : "relative", left: 0, top: 0, bottom: 0, zIndex: 20,
-        backgroundColor: "#fff", borderRight: "1px solid #e5e5e5",
+        width: 260,
+        height: "100%",
+        position: isMobile ? "fixed" : "relative",
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 20,
         transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
         transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        willChange: "transform",
       }}>
         <ChatPageSidebar onNewChat={handleNewChat} />
       </div>

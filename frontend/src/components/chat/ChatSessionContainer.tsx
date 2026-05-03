@@ -46,8 +46,9 @@ export const ChatSessionContainer: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 5,  // Turunkan z-index agar di bawah overlay (10)
+        zIndex: 5,
         pointerEvents: "none",
+        backgroundColor: "transparent", // Pastikan tidak ada background yang mengganggu
       }}>
         <div style={{
           pointerEvents: "auto",
