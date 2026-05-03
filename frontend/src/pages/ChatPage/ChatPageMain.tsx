@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import ChatPageSidebar from "./ChatPageSidebar";
 import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
 import { chatStore } from "../../store/chat_state_store";
@@ -17,9 +17,16 @@ const NewChatIcon = () => (
   </svg>
 );
 
+const MAX_DRAG_RIGHT = 0;    // panel stays at open position, no gap to the left
+const MAX_DRAG_LEFT = -260;  // full close distance
+const CLOSE_THRESHOLD = -100; // drag beyond this closes the sidebar
+
 export const ChatPageMain: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
 
   useEffect(() => {
     const handleResize = () => {
@@ -36,19 +43,49 @@ export const ChatPageMain: React.FC = () => {
     if (isMobile) setSidebarOpen(false);
   };
 
-  // Listen to closeSidebar event from drag handle
-  useEffect(() => {
-    const handleCloseSidebar = () => {
-      setSidebarOpen(false);
-    };
-    document.addEventListener('closeSidebar', handleCloseSidebar);
-    return () => document.removeEventListener('closeSidebar', handleCloseSidebar);
+  const handleDragStart = useCallback((clientX: number) => {
+    dragStartX.current = clientX;
+    setIsDragging(true);
+    setDragOffset(0);
   }, []);
+
+  const handleDragMove = useCallback((currentClientX: number) => {
+    const diff = currentClientX - dragStartX.current;
+    // Clamp between max left (closing) and 0 (open) – no rightward movement
+    const clamped = Math.min(MAX_DRAG_RIGHT, Math.max(MAX_DRAG_LEFT, diff));
+    setDragOffset(clamped);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+    setDragOffset((currentOffset) => {
+      if (currentOffset < CLOSE_THRESHOLD) {
+        setSidebarOpen(false);
+        return 0;
+      }
+      return 0; // snap back to open
+    });
+  }, []);
+
+  const closeSidebar = () => setSidebarOpen(false);
+
+  const getSidebarTransform = (): string => {
+    if (isMobile) {
+      if (isDragging) {
+        return `translateX(${dragOffset}px)`;
+      }
+      return sidebarOpen ? "translateX(0)" : "translateX(-100%)";
+    }
+    return "translateX(0)";
+  };
+
+  const sidebarTransition = isDragging
+    ? "none"
+    : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
-      {/* Hamburger Icon - Hanya Mobile */}
       {isMobile && (
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -75,7 +112,6 @@ export const ChatPageMain: React.FC = () => {
         </button>
       )}
       
-      {/* New Chat Icon - Tampil di Mobile dan Desktop */}
       <button
         onClick={handleNewChat}
         style={{
@@ -100,9 +136,8 @@ export const ChatPageMain: React.FC = () => {
         <NewChatIcon />
       </button>
 
-      {/* Overlay - z-index 10 */}
       <div
-        onClick={() => setSidebarOpen(false)}
+        onClick={closeSidebar}
         style={{
           position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.3)", zIndex: 10,
           opacity: isMobile && sidebarOpen ? 1 : 0,
@@ -112,26 +147,34 @@ export const ChatPageMain: React.FC = () => {
         }}
       />
 
-      {/* Sidebar Wrapper */}
-      <div style={{
-        width: 260,
-        height: "100%",
-        position: isMobile ? "fixed" : "relative",
-        left: 0,
-        top: 0,
-        bottom: 0,
-        zIndex: 20,
-        transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
-        transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        willChange: "transform",
-      }}>
-        <ChatPageSidebar onNewChat={handleNewChat} isMobile={isMobile} />
+      <div
+        style={{
+          width: 260,
+          height: "100%",
+          position: isMobile ? "fixed" : "relative",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 20,
+          transform: getSidebarTransform(),
+          transition: sidebarTransition,
+          willChange: "transform",
+        }}
+      >
+        <ChatPageSidebar
+          onNewChat={handleNewChat}
+          isMobile={isMobile}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+        />
       </div>
       
-      {/* Main chat area */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         <ChatSessionContainer isDesktop={!isMobile} />
       </div>
     </div>
   );
 };
+
+export default ChatPageMain;

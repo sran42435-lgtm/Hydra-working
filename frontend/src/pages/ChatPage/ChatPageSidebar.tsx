@@ -1,82 +1,62 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 
 interface ChatPageSidebarProps {
   onNewChat: () => void;
   isMobile: boolean;
+  onDragStart?: (clientX: number) => void;
+  onDragMove?: (clientX: number) => void;
+  onDragEnd?: () => void;
 }
 
-export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat, isMobile }) => {
-  const [history, setHistory] = useState<string[]>(["Chat tentang AI", "Cara membuat kue", "Resep masakan"]);
+export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
+  onNewChat,
+  isMobile,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+}) => {
+  const [history] = useState<string[]>(["Chat tentang AI", "Cara membuat kue", "Resep masakan"]);
   const [isDragging, setIsDragging] = useState(false);
   const startX = useRef<number>(0);
-  const [offsetX, setOffsetX] = useState(0);
   const sidebarRef = useRef<HTMLDivElement>(null);
-
-  const resetPosition = () => {
-    setOffsetX(0);
-  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     startX.current = touch.clientX;
     setIsDragging(true);
+    onDragStart?.(touch.clientX);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
     const touch = e.touches[0];
-    const diff = touch.clientX - startX.current;
-    setOffsetX(diff);
-    if (diff < -100) {
-      const closeEvent = new CustomEvent('closeSidebar');
-      document.dispatchEvent(closeEvent);
-      setIsDragging(false);
-      resetPosition();
-    }
+    onDragMove?.(touch.clientX);
   };
 
   const handleTouchEnd = () => {
     if (isDragging) {
       setIsDragging(false);
-      if (offsetX > -100) {
-        resetPosition();
-      }
+      onDragEnd?.();
     }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     startX.current = e.clientX;
+    onDragStart?.(e.clientX);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
-    const diff = e.clientX - startX.current;
-    setOffsetX(diff);
-    if (diff < -100) {
-      const closeEvent = new CustomEvent('closeSidebar');
-      document.dispatchEvent(closeEvent);
-      setIsDragging(false);
-      resetPosition();
-    }
+    onDragMove?.(e.clientX);
   };
 
   const handleMouseUp = () => {
     if (isDragging) {
       setIsDragging(false);
-      if (offsetX > -100) {
-        resetPosition();
-      }
+      onDragEnd?.();
     }
   };
-
-  useEffect(() => {
-    const handleClose = () => {
-      resetPosition();
-    };
-    document.addEventListener('closeSidebar', handleClose);
-    return () => document.removeEventListener('closeSidebar', handleClose);
-  }, []);
 
   return (
     <div
@@ -89,7 +69,6 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat, isM
         display: "flex",
         flexDirection: "column",
         borderRight: "1px solid rgba(0,0,0,0.05)",
-        transform: "none",
         position: "relative",
       }}
       onTouchStart={handleTouchStart}
@@ -120,7 +99,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({ onNewChat, isM
       )}
 
       <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1a1a1a", marginBottom: 8 }}>Hydra AI</h3>
+        <h3 style={{ fontSize: 20, fontFamily: "'Sora', sans-serif", fontWeight: 567, color: "#1a1a1a", marginBottom: 8 }}>Hydra AI</h3>
         <p style={{ fontSize: 12, color: "#999" }}>Phase 1</p>
       </div>
 
