@@ -99,7 +99,25 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
       )}
 
       <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 20, fontFamily: "'Sora', sans-serif", fontWeight: 567, color: "#1a1a1a", marginBottom: 8 }}>Hydra AI</h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <img
+            src="/hydra-icon.png"
+            alt="Hydra Logo"
+            style={{ width: 28, height: 28, flexShrink: 0 }}
+          />
+          <h3
+            style={{
+              fontSize: 20,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              fontWeight: 678,
+              fontStyle: "italic",
+              color: "#1a1a1a",
+              margin: 0,
+            }}
+          >
+            Hydra AI
+          </h3>
+        </div>
         <p style={{ fontSize: 12, color: "#999" }}>Phase 1</p>
       </div>
 
