@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef } from "react";
 import { chatStore } from "../../store/chat_state_store";
+import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
 import { MessageListView } from "./MessageListView";
 
@@ -8,15 +9,23 @@ interface ChatSessionContainerProps {
 }
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const { isLoading } = useChatStore(); // ← now reactive, no crash
+
   const handleSend = async (text: string) => {
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
     chatStore.setLoading(true);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch("/api/v1/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
+        signal: controller.signal,
       });
       const data = await res.json();
       chatStore.addMessage({
@@ -24,14 +33,32 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         role: "assistant",
         content: data.response || "(tidak ada balasan)",
       });
-    } catch (err) {
-      chatStore.addMessage({
-        id: Date.now().toString() + "_err",
-        role: "assistant",
-        content: "Error: " + String(err),
-      });
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // intentional stop – do nothing, message added in handleStop
+      } else {
+        chatStore.addMessage({
+          id: Date.now().toString() + "_err",
+          role: "assistant",
+          content: "Error: " + String(err),
+        });
+      }
     } finally {
+      abortControllerRef.current = null;
       chatStore.setLoading(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+
+      chatStore.addMessage({
+        id: Date.now().toString() + "_stopped",
+        role: "assistant",
+        content: "Pesan telah dihentikan.",
+      });
     }
   };
 
@@ -44,7 +71,6 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       position: "relative",
     }}>
       <MessageListView />
-      {/* Input bar fixed di bawah */}
       <div style={{
         position: "fixed",
         bottom: 0,
@@ -52,7 +78,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         right: 0,
         zIndex: 5,
         pointerEvents: "none",
-        paddingLeft: isDesktop ? "260px" : "0", // Geser ke kanan di Desktop agar tidak masuk panel
+        paddingLeft: isDesktop ? "260px" : "0",
         transition: "padding-left 0.3s ease",
         backgroundColor: "transparent",
       }}>
@@ -61,9 +87,16 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
           maxWidth: "100%",
           margin: "0 auto",
         }}>
-          <ChatInputBar onSend={handleSend} disabled={chatStore.getState().isLoading} />
+          <ChatInputBar
+            onSend={handleSend}
+            onStop={handleStop}
+            disabled={isLoading}
+            isLoading={isLoading}
+          />
         </div>
       </div>
     </div>
   );
 };
+
+export default ChatSessionContainer;

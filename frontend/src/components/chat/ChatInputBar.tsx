@@ -2,7 +2,9 @@ import React, { useState, useRef } from "react";
 
 interface ChatInputBarProps {
   onSend: (message: string) => void;
+  onStop: () => void;
   disabled: boolean;
+  isLoading: boolean;
 }
 
 const SendIcon = () => (
@@ -12,16 +14,47 @@ const SendIcon = () => (
   </svg>
 );
 
-export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) => {
+const StopIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+  </svg>
+);
+
+export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disabled, isLoading }) => {
   const [text, setText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
-    if (!text.trim() || disabled) return;
+    if (!text.trim() || disabled || isLoading) return;
     onSend(text);
     setText("");
     inputRef.current?.focus();
   };
+
+  const handleStop = () => {
+    onStop();
+    inputRef.current?.focus();
+  };
+
+  const handleButtonClick = () => {
+    if (isLoading) {
+      handleStop();
+    } else {
+      handleSend();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      if (isLoading) {
+        handleStop();
+      } else {
+        handleSend();
+      }
+    }
+  };
+
+  const isSendDisabled = disabled || isLoading || !text.trim();
 
   return (
     <div style={{
@@ -36,7 +69,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
         display: "flex",
         alignItems: "center",
         backgroundColor: "rgba(255,255,255,0.8)",
-        backdropFilter: "blur(24px)",   // Ditingkatkan ke 24px
+        backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
@@ -48,9 +81,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-          placeholder="Ketik pesan..."
-          disabled={disabled}
+          onKeyDown={handleKeyDown}
+          placeholder={isLoading ? "AI sedang merespons..." : "Ketik pesan..."}
+          disabled={disabled || isLoading}
           style={{
             flex: 1,
             padding: "8px 4px 8px 0",
@@ -64,27 +97,39 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, disabled }) 
             minWidth: 0,
           }}
         />
+
+        {/* Single button that toggles between Send and Stop */}
         <button
-          onClick={handleSend}
-          disabled={disabled}
+          onClick={handleButtonClick}
+          disabled={!isLoading && isSendDisabled}
           style={{
             width: 40,
             height: 40,
             borderRadius: "50%",
             border: "none",
-            backgroundColor: disabled ? "#ccc" : "#E07B5A",
+            backgroundColor: isLoading
+              ? "#E07B5A"
+              : isSendDisabled
+                ? "#ccc"
+                : "#E07B5A",
             color: "#fff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: disabled ? "not-allowed" : "pointer",
+            cursor: isLoading
+              ? "pointer"
+              : isSendDisabled
+                ? "not-allowed"
+                : "pointer",
             boxShadow: "0 4px 12px rgba(224,123,90,0.25)",
             flexShrink: 0,
           }}
         >
-          <SendIcon />
+          {isLoading ? <StopIcon /> : <SendIcon />}
         </button>
       </div>
     </div>
   );
 };
+
+export default ChatInputBar;
