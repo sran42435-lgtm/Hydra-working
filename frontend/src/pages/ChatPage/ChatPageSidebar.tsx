@@ -64,7 +64,9 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.98)",
+        backgroundColor: "rgba(255, 255, 255, 0.7)",   // lowered opacity for transparency
+        backdropFilter: "blur(24px)",                   // blur background content
+        WebkitBackdropFilter: "blur(24px)",             // Safari support
         padding: "16px",
         display: "flex",
         flexDirection: "column",

@@ -121,7 +121,11 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disa
               : isSendDisabled
                 ? "not-allowed"
                 : "pointer",
-            boxShadow: "0 4px 12px rgba(224,123,90,0.25)",
+            boxShadow: isLoading
+              ? "0 4px 12px rgba(224,123,90,0.25)"       // stop button always has orange shadow
+              : isSendDisabled
+                ? "none"                                   // gray button has no shadow
+                : "0 4px 12px rgba(224,123,90,0.25)",     // active send button has orange shadow
             flexShrink: 0,
           }}
         >
