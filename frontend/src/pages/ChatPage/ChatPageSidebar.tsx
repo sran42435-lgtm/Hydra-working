@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 interface ChatPageSidebarProps {
   onNewChat: () => void;
   isMobile: boolean;
-  dragOffset: number;          // current drag offset from parent
+  dragOffset: number;
   onDragStart?: (clientX: number) => void;
   onDragMove?: (clientX: number) => void;
   onDragEnd?: () => void;
@@ -23,6 +23,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
     const touch = e.touches[0];
     startX.current = touch.clientX;
     setIsDragging(true);
@@ -30,38 +31,36 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isDragging) return;
+    if (!isMobile || !isDragging) return;
     const touch = e.touches[0];
     onDragMove?.(touch.clientX);
   };
 
   const handleTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      onDragEnd?.();
-    }
+    if (!isMobile || !isDragging) return;
+    setIsDragging(false);
+    onDragEnd?.();
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isMobile) return;
     setIsDragging(true);
     startX.current = e.clientX;
     onDragStart?.(e.clientX);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+    if (!isMobile || !isDragging) return;
     onDragMove?.(e.clientX);
   };
 
   const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false);
-      onDragEnd?.();
-    }
+    if (!isMobile || !isDragging) return;
+    setIsDragging(false);
+    onDragEnd?.();
   };
 
-  // Content shifts to the right when panel is expanded (dragOffset > 0)
-  const extraPadding = Math.max(0, dragOffset);
+  const extraPadding = isMobile ? Math.max(0, dragOffset) : 0;
 
   return (
     <div
@@ -73,13 +72,13 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
         backdropFilter: "blur(150px)",
         WebkitBackdropFilter: "blur(150px)",
         padding: "16px",
-        paddingLeft: 16 + extraPadding,    // shift content right when expanded
+        paddingLeft: 16 + extraPadding,
         display: "flex",
         flexDirection: "column",
         borderRight: "1px solid rgba(0,0,0,0.05)",
         position: "relative",
         boxSizing: "border-box",
-        transition: "padding-left 0.15s ease",  // smooth shift
+        transition: "padding-left 0.15s ease",
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
