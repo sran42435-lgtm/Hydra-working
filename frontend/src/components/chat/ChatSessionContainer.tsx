@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { chatStore } from "../../store/chat_state_store";
 import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
@@ -9,10 +9,18 @@ interface ChatSessionContainerProps {
 }
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
-  const abortControllerRef = useRef<AbortController | null>(null);
   const { isLoading } = useChatStore();
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Controlled input text (so we can restore it after stop)
+  const [inputText, setInputText] = useState("");
+  // Remember last sent user message for restoration
+  const lastUserMessageRef = useRef<string>("");
 
   const handleSend = async (text: string) => {
+    // Store the user's message for possible restoration
+    lastUserMessageRef.current = text;
+
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
     chatStore.setLoading(true);
@@ -35,7 +43,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // intentional stop – message added in handleStop
+        // stop was pressed – text will be restored in handleStop
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
@@ -54,12 +62,15 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
 
+      // Add stopped message
       chatStore.addMessage({
         id: Date.now().toString() + "_stopped",
         role: "assistant",
         content: "pesan telah dihentikan",
       });
     }
+    // Restore the last user message text back into the input
+    setInputText(lastUserMessageRef.current);
   };
 
   return (
@@ -88,6 +99,8 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
           margin: "0 auto",
         }}>
           <ChatInputBar
+            text={inputText}
+            onTextChange={setInputText}
             onSend={handleSend}
             onStop={handleStop}
             disabled={isLoading}

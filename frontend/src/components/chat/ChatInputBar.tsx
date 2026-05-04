@@ -1,6 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 
 interface ChatInputBarProps {
+  text: string;
+  onTextChange: (text: string) => void;
   onSend: (message: string) => void;
   onStop: () => void;
   disabled: boolean;
@@ -20,14 +22,20 @@ const StopIcon = () => (
   </svg>
 );
 
-export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disabled, isLoading }) => {
-  const [text, setText] = useState("");
+export const ChatInputBar: React.FC<ChatInputBarProps> = ({
+  text,
+  onTextChange,
+  onSend,
+  onStop,
+  disabled,
+  isLoading,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
     if (!text.trim() || disabled || isLoading) return;
     onSend(text);
-    setText("");
+    onTextChange(""); // clear after send (will be set back if stopped)
     inputRef.current?.focus();
   };
 
@@ -80,7 +88,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disa
         <input
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={isLoading ? "AI sedang merespons..." : "Ketik pesan..."}
           disabled={disabled || isLoading}
@@ -98,7 +106,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disa
           }}
         />
 
-        {/* Single button that toggles between Send and Stop */}
         <button
           onClick={handleButtonClick}
           disabled={!isLoading && isSendDisabled}
@@ -122,10 +129,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSend, onStop, disa
                 ? "not-allowed"
                 : "pointer",
             boxShadow: isLoading
-              ? "0 4px 12px rgba(224,123,90,0.25)"       // stop button always has orange shadow
+              ? "0 4px 12px rgba(224,123,90,0.25)"
               : isSendDisabled
-                ? "none"                                   // gray button has no shadow
-                : "0 4px 12px rgba(224,123,90,0.25)",     // active send button has orange shadow
+                ? "none"
+                : "0 4px 12px rgba(224,123,90,0.25)",
             flexShrink: 0,
           }}
         >

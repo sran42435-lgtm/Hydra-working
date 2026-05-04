@@ -36,13 +36,14 @@ export const MessageListView: React.FC = () => {
       {messages.map((msg) => {
         const isStoppedMessage = msg.id.endsWith("_stopped");
 
-        // Render stop message differently: gray, italic, smaller, no bubble
         if (isStoppedMessage) {
+          // Render stop message right-aligned, below the user bubble
           return (
             <div key={msg.id} style={{
               display: "flex",
-              justifyContent: "center",
+              justifyContent: "flex-end",
               marginBottom: 12,
+              paddingRight: 4,
             }}>
               <span style={{
                 color: "#999",
