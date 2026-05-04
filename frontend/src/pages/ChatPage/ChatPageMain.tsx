@@ -17,8 +17,8 @@ const NewChatIcon = () => (
   </svg>
 );
 
-const MAX_DRAG_RIGHT = 0;    // panel stays at open position, no gap to the left
-const MAX_DRAG_LEFT = -260;  // full close distance
+const MAX_DRAG_RIGHT = 30;    // maximum rightwards expansion (px)
+const MAX_DRAG_LEFT = -260;   // full close distance
 const CLOSE_THRESHOLD = -100; // drag beyond this closes the sidebar
 
 export const ChatPageMain: React.FC = () => {
@@ -51,7 +51,6 @@ export const ChatPageMain: React.FC = () => {
 
   const handleDragMove = useCallback((currentClientX: number) => {
     const diff = currentClientX - dragStartX.current;
-    // Clamp between max left (closing) and 0 (open) – no rightward movement
     const clamped = Math.min(MAX_DRAG_RIGHT, Math.max(MAX_DRAG_LEFT, diff));
     setDragOffset(clamped);
   }, []);
@@ -63,25 +62,55 @@ export const ChatPageMain: React.FC = () => {
         setSidebarOpen(false);
         return 0;
       }
-      return 0; // snap back to open
+      return 0; // snap back to normal
     });
   }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  const getSidebarTransform = (): string => {
-    if (isMobile) {
-      if (isDragging) {
-        return `translateX(${dragOffset}px)`;
-      }
-      return sidebarOpen ? "translateX(0)" : "translateX(-100%)";
-    }
-    return "translateX(0)";
-  };
+  const getWrapperStyle = (): React.CSSProperties => {
+    const base: React.CSSProperties = {
+      height: "100%",
+      position: isMobile ? "fixed" : "relative",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 20,
+      transition: isDragging ? "none" : "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      willChange: "transform, width",
+      overflow: "hidden",
+    };
 
-  const sidebarTransition = isDragging
-    ? "none"
-    : "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+    if (isMobile && !sidebarOpen) {
+      return {
+        ...base,
+        width: 260,
+        transform: "translateX(-100%)",
+      };
+    }
+
+    if (isDragging) {
+      if (dragOffset > 0) {
+        return {
+          ...base,
+          width: 260 + dragOffset,
+          transform: "translateX(0)",
+        };
+      } else {
+        return {
+          ...base,
+          width: 260,
+          transform: `translateX(${dragOffset}px)`,
+        };
+      }
+    }
+
+    return {
+      ...base,
+      width: 260,
+      transform: "translateX(0)",
+    };
+  };
 
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
@@ -147,23 +176,11 @@ export const ChatPageMain: React.FC = () => {
         }}
       />
 
-      <div
-        style={{
-          width: 260,
-          height: "100%",
-          position: isMobile ? "fixed" : "relative",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 20,
-          transform: getSidebarTransform(),
-          transition: sidebarTransition,
-          willChange: "transform",
-        }}
-      >
+      <div style={getWrapperStyle()}>
         <ChatPageSidebar
           onNewChat={handleNewChat}
           isMobile={isMobile}
+          dragOffset={dragOffset}
           onDragStart={handleDragStart}
           onDragMove={handleDragMove}
           onDragEnd={handleDragEnd}

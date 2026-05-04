@@ -3,6 +3,7 @@ import React, { useRef, useState } from "react";
 interface ChatPageSidebarProps {
   onNewChat: () => void;
   isMobile: boolean;
+  dragOffset: number;          // current drag offset from parent
   onDragStart?: (clientX: number) => void;
   onDragMove?: (clientX: number) => void;
   onDragEnd?: () => void;
@@ -11,6 +12,7 @@ interface ChatPageSidebarProps {
 export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
   onNewChat,
   isMobile,
+  dragOffset,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -58,20 +60,26 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
     }
   };
 
+  // Content shifts to the right when panel is expanded (dragOffset > 0)
+  const extraPadding = Math.max(0, dragOffset);
+
   return (
     <div
       ref={sidebarRef}
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.75)",   // still non‑transparent
-        backdropFilter: "blur(150px)",                   // much stronger blur — background nearly uniform
+        backgroundColor: "rgba(255, 255, 255, 0.75)",
+        backdropFilter: "blur(150px)",
         WebkitBackdropFilter: "blur(150px)",
         padding: "16px",
+        paddingLeft: 16 + extraPadding,    // shift content right when expanded
         display: "flex",
         flexDirection: "column",
         borderRight: "1px solid rgba(0,0,0,0.05)",
         position: "relative",
+        boxSizing: "border-box",
+        transition: "padding-left 0.15s ease",  // smooth shift
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
