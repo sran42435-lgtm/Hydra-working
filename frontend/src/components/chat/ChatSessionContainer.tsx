@@ -10,7 +10,7 @@ interface ChatSessionContainerProps {
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { isLoading } = useChatStore(); // ← now reactive, no crash
+  const { isLoading } = useChatStore();
 
   const handleSend = async (text: string) => {
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
@@ -35,7 +35,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // intentional stop – do nothing, message added in handleStop
+        // intentional stop – message added in handleStop
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
@@ -57,7 +57,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       chatStore.addMessage({
         id: Date.now().toString() + "_stopped",
         role: "assistant",
-        content: "Pesan telah dihentikan.",
+        content: "pesan telah dihentikan",
       });
     }
   };
