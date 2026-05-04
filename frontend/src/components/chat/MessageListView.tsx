@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { chatStore, Message } from "../../store/chat_state_store";
 import { HydraIcon } from "../ui/HydraIcon";
 
@@ -12,6 +12,28 @@ export const MessageListView: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Merge consecutive assistant messages into one paragraph
+  const mergedMessages = useMemo(() => {
+    const result: Message[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const current = messages[i];
+      if (current.id.endsWith("_stopped")) {
+        result.push(current);
+        continue;
+      }
+      if (current.role === "assistant") {
+        const prev = result[result.length - 1];
+        if (prev && prev.role === "assistant" && !prev.id.endsWith("_stopped")) {
+          prev.content += " " + current.content;
+          prev.id = current.id;
+          continue;
+        }
+      }
+      result.push({ ...current });
+    }
+    return result;
+  }, [messages]);
+
   return (
     <div style={{
       flex: 1,
@@ -19,7 +41,7 @@ export const MessageListView: React.FC = () => {
       padding: "60px 16px 90px",
       backgroundColor: "#fafafa",
     }}>
-      {messages.length === 0 && (
+      {mergedMessages.length === 0 && (
         <div style={{
           display: "flex",
           flexDirection: "column",
@@ -33,11 +55,11 @@ export const MessageListView: React.FC = () => {
           <p style={{ marginTop: 12 }}>Kirim pesan untuk memulai</p>
         </div>
       )}
-      {messages.map((msg) => {
+      {mergedMessages.map((msg) => {
         const isStoppedMessage = msg.id.endsWith("_stopped");
 
+        // Stop message – gray, italic, small, right‑aligned
         if (isStoppedMessage) {
-          // Render stop message right-aligned, below the user bubble
           return (
             <div key={msg.id} style={{
               display: "flex",
@@ -58,34 +80,57 @@ export const MessageListView: React.FC = () => {
           );
         }
 
-        // Normal message bubble
+        // AI message: plain text, FULL WIDTH, flush left, no extra padding
+        if (msg.role === "assistant") {
+          const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
+          return (
+            <div key={msg.id} style={{
+              marginBottom: 12,
+              display: "flex",
+              justifyContent: "flex-start",
+            }}>
+              <div style={{
+                width: "100%",
+                padding: "8px 0",            // no horizontal padding, text hugs left edge
+                color: "#1a1a1a",
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 18,
+                fontWeight: 900,
+                lineHeight: 1.5,
+                whiteSpace: "normal",
+                overflowWrap: "break-word",
+              }}>
+                {cleanContent}
+              </div>
+            </div>
+          );
+        }
+
+        // User message: orange bubble, right‑aligned
         return (
           <div key={msg.id} style={{
             marginBottom: 12,
             display: "flex",
-            justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+            justifyContent: "flex-end",
           }}>
             <div style={{
               maxWidth: "75%",
               padding: "12px 18px",
               borderRadius: 20,
-              backgroundColor: msg.role === "user"
-                ? "rgba(224,123,90,0.75)"
-                : "rgba(255,255,255,0.55)",
+              backgroundColor: "rgba(224,123,90,0.75)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
-              color: msg.role === "user" ? "#fff" : "#1a1a1a",
-              borderTopRightRadius: msg.role === "user" ? 4 : 20,
-              borderTopLeftRadius: msg.role === "user" ? 20 : 4,
+              color: "#fff",
+              borderTopRightRadius: 4,
+              borderTopLeftRadius: 20,
               fontFamily: "'Outfit', sans-serif",
               fontSize: 18,
               fontWeight: 900,
               lineHeight: 1.5,
-              wordBreak: "break-word",
+              whiteSpace: "normal",
+              overflowWrap: "break-word",
               border: "1px solid rgba(255,255,255,0.5)",
-              boxShadow: msg.role === "user"
-                ? "0 4px 12px rgba(0,0,0,0.15)"
-                : "0 8px 24px rgba(0,0,0,0.05)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             }}>
               {msg.content}
             </div>
