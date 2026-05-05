@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 
 interface ChatInputBarProps {
   text: string;
@@ -30,19 +30,35 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   disabled,
   isLoading,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setIsComposing] = useState(false);
+
+  // Auto‑resize the textarea
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [text, autoResize]);
+
+  useEffect(() => {
+    autoResize();
+  }, [isComposing, autoResize]);
 
   const handleSend = () => {
     if (!text.trim() || disabled || isLoading) return;
     onSend(text);
     onTextChange("");
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
   };
 
   const handleStop = () => {
     onStop();
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
   };
 
   const handleButtonClick = () => {
@@ -54,7 +70,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !isComposing) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
+      e.preventDefault();
       if (isLoading) {
         handleStop();
       } else {
@@ -73,28 +90,29 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   return (
     <div style={{
-      padding: "0 14px 16px",              // outer side & bottom margin (Claude)
+      padding: "0 14px 8px",                   // outer margins
       display: "flex",
       justifyContent: "center",
       backgroundColor: "transparent",
     }}>
-      {/* Pill container */}
+      {/* Expandable container */}
       <div style={{
         width: "100%",
-        height: 60,                          // Claude height
-        display: "flex",
-        alignItems: "center",
+        position: "relative",                   // for absolute button
         backgroundColor: "rgba(255,255,255,0.8)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderRadius: 30,                    // perfect pill
+        borderRadius: 30,
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
         border: "1px solid rgba(0,0,0,0.04)",
-        padding: "0 18px",                   // left/right padding (18px Claude spec)
-        position: "relative",                // for absolute button positioning
+        padding: "0 18px",                      // left/right internal space
+        minHeight: 60,                          // single‑line height
+        boxSizing: "border-box",
+        transition: "height 0.1s ease",
       }}>
-        <input
-          ref={inputRef}
+        {/* Textarea that grows */}
+        <textarea
+          ref={textareaRef}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -102,30 +120,34 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           disabled={disabled || isLoading}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
+          rows={1}
           style={{
-            flex: 1,
-            height: "100%",
-            padding: "0 50px 0 0",           // right padding leaves room for the button
+            width: "100%",
             border: "none",
             backgroundColor: "transparent",
             color: "#1a1a1a",
             fontFamily: "'Outfit', sans-serif",
             fontSize: 16,
+            lineHeight: 1.5,
             outline: "none",
-            minWidth: 0,
+            resize: "none",
+            padding: "12px 0 52px 0",           // top/bottom spacing – bottom is high enough to clear button
+            minHeight: 40,                       // minimum for a single line within the bar
+            maxHeight: 200,                      // scroll after this
+            overflowY: "auto",
+            boxSizing: "border-box",
           }}
         />
 
-        {/* Send / Stop button – absolute right inside the pill */}
+        {/* Send / Stop button – absolute at bottom‑right */}
         <button
           onClick={handleButtonClick}
           disabled={!isLoading && isSendDisabled}
           style={{
             position: "absolute",
-            right: 10,                        // distance from right edge (Claude spec)
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 38,                        // Claude 38px circle
+            right: 10,
+            bottom: 12,                          // distance from container bottom (Claude‑like)
+            width: 38,                            // 38px circle
             height: 38,
             borderRadius: "50%",
             border: "none",
@@ -148,7 +170,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               : isSendDisabled
                 ? "none"
                 : "0 4px 12px rgba(224,123,90,0.25)",
-            flexShrink: 0,
           }}
         >
           {isLoading ? <StopIcon /> : <SendIcon />}
