@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 
 interface ChatInputBarProps {
   text: string;
@@ -31,11 +31,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   isLoading,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isComposing, setIsComposing] = useState(false);
 
   const handleSend = () => {
     if (!text.trim() || disabled || isLoading) return;
     onSend(text);
-    onTextChange(""); // clear after send (will be set back if stopped)
+    onTextChange("");
     inputRef.current?.focus();
   };
 
@@ -53,7 +54,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isComposing) {
       if (isLoading) {
         handleStop();
       } else {
@@ -64,38 +65,47 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const isSendDisabled = disabled || isLoading || !text.trim();
 
+  const placeholder = (text.length > 0 || isComposing)
+    ? ""
+    : isLoading
+      ? "AI sedang merespons..."
+      : "Ketik pesan...";
+
   return (
     <div style={{
-      padding: "0 16px 16px",
+      padding: "0 14px 16px",              // outer side & bottom margin (Claude)
       display: "flex",
       justifyContent: "center",
       backgroundColor: "transparent",
     }}>
+      {/* Pill container */}
       <div style={{
         width: "100%",
-        maxWidth: 560,
+        height: 60,                          // Claude height
         display: "flex",
         alignItems: "center",
         backgroundColor: "rgba(255,255,255,0.8)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderRadius: 30,
+        borderRadius: 30,                    // perfect pill
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
         border: "1px solid rgba(0,0,0,0.04)",
-        padding: "4px 4px 4px 16px",
-        gap: 4,
+        padding: "0 18px",                   // left/right padding (18px Claude spec)
+        position: "relative",                // for absolute button positioning
       }}>
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isLoading ? "AI sedang merespons..." : "Ketik pesan..."}
+          placeholder={placeholder}
           disabled={disabled || isLoading}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           style={{
             flex: 1,
-            padding: "8px 4px 8px 0",
-            borderRadius: 26,
+            height: "100%",
+            padding: "0 50px 0 0",           // right padding leaves room for the button
             border: "none",
             backgroundColor: "transparent",
             color: "#1a1a1a",
@@ -106,12 +116,17 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           }}
         />
 
+        {/* Send / Stop button – absolute right inside the pill */}
         <button
           onClick={handleButtonClick}
           disabled={!isLoading && isSendDisabled}
           style={{
-            width: 40,
-            height: 40,
+            position: "absolute",
+            right: 10,                        // distance from right edge (Claude spec)
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 38,                        // Claude 38px circle
+            height: 38,
             borderRadius: "50%",
             border: "none",
             backgroundColor: isLoading
