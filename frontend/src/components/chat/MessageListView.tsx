@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { chatStore, Message } from "../../store/chat_state_store";
 import { HydraIcon } from "../ui/HydraIcon";
 
 export const MessageListView: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribe = chatStore.subscribe(() =>
@@ -34,11 +35,16 @@ export const MessageListView: React.FC = () => {
     return result;
   }, [messages]);
 
+  // Auto‑scroll to bottom whenever messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mergedMessages]);
+
   return (
     <div style={{
       flex: 1,
       overflowY: "auto",
-      padding: "60px 16px 90px",
+      padding: "60px 16px 110px",   // increased bottom padding from 90px to 110px
       backgroundColor: "#fafafa",
     }}>
       {mergedMessages.length === 0 && (
@@ -48,17 +54,16 @@ export const MessageListView: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           height: "100%",
-          color: "#999",
+          color: "#1a1a1a",
           textAlign: "center",
         }}>
           <HydraIcon size={48} />
-          <p style={{ marginTop: 12 }}>Kirim pesan untuk memulai</p>
+          <p style={{ marginTop: 12, color: "#1a1a1a" }}>Kirim pesan untuk memulai</p>
         </div>
       )}
       {mergedMessages.map((msg) => {
         const isStoppedMessage = msg.id.endsWith("_stopped");
 
-        // Stop message – gray, italic, small, right‑aligned
         if (isStoppedMessage) {
           return (
             <div key={msg.id} style={{
@@ -80,7 +85,6 @@ export const MessageListView: React.FC = () => {
           );
         }
 
-        // AI message: plain text, FULL WIDTH, flush left, no extra padding
         if (msg.role === "assistant") {
           const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
           return (
@@ -91,7 +95,7 @@ export const MessageListView: React.FC = () => {
             }}>
               <div style={{
                 width: "100%",
-                padding: "8px 0",            // no horizontal padding, text hugs left edge
+                padding: "8px 0",
                 color: "#1a1a1a",
                 fontFamily: "'Outfit', sans-serif",
                 fontSize: 18,
@@ -106,7 +110,7 @@ export const MessageListView: React.FC = () => {
           );
         }
 
-        // User message: orange bubble, right‑aligned
+        // User message
         return (
           <div key={msg.id} style={{
             marginBottom: 12,
@@ -137,6 +141,9 @@ export const MessageListView: React.FC = () => {
           </div>
         );
       })}
+
+      {/* Invisible element for auto‑scroll */}
+      <div ref={bottomRef} />
     </div>
   );
 };

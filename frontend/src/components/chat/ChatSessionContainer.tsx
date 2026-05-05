@@ -3,22 +3,21 @@ import { chatStore } from "../../store/chat_state_store";
 import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
 import { MessageListView } from "./MessageListView";
+import { useStreamResponse } from "../../hooks/useStreamResponse";
 
 interface ChatSessionContainerProps {
   isDesktop?: boolean;
 }
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
-  const { isLoading } = useChatStore();
   const abortControllerRef = useRef<AbortController | null>(null);
+  const { isLoading } = useChatStore();
+  const { startStream, stopStream } = useStreamResponse();
 
-  // Controlled input text (so we can restore it after stop)
   const [inputText, setInputText] = useState("");
-  // Remember last sent user message for restoration
   const lastUserMessageRef = useRef<string>("");
 
   const handleSend = async (text: string) => {
-    // Store the user's message for possible restoration
     lastUserMessageRef.current = text;
 
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
@@ -36,24 +35,28 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         signal: controller.signal,
       });
       const data = await res.json();
-      chatStore.addMessage({
-        id: Date.now().toString() + "_ai",
-        role: "assistant",
-        content: data.response || "(tidak ada balasan)",
+      const aiText = data.response || "(tidak ada balasan)";
+
+      // Create placeholder AI message and stream into it
+      const aiMessageId = Date.now().toString() + "_ai";
+      chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
+
+      startStream(aiText, aiMessageId, () => {
+        chatStore.setLoading(false);    // done streaming
       });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // stop was pressed – text will be restored in handleStop
+        // stop pressed – handled in handleStop
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
           role: "assistant",
           content: "Error: " + String(err),
         });
+        chatStore.setLoading(false);
       }
     } finally {
       abortControllerRef.current = null;
-      chatStore.setLoading(false);
     }
   };
 
@@ -61,16 +64,17 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
-
-      // Add stopped message
-      chatStore.addMessage({
-        id: Date.now().toString() + "_stopped",
-        role: "assistant",
-        content: "pesan telah dihentikan",
-      });
     }
-    // Restore the last user message text back into the input
+    stopStream();   // stop word‑by‑word streaming
+
+    chatStore.addMessage({
+      id: Date.now().toString() + "_stopped",
+      role: "assistant",
+      content: "pesan telah dihentikan",
+    });
+
     setInputText(lastUserMessageRef.current);
+    chatStore.setLoading(false);
   };
 
   return (

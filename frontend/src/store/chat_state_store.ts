@@ -67,6 +67,17 @@ class ChatStore {
     };
     this.emit();
   }
+
+  // NEW: update the content of a specific message by id
+  updateMessageContent(id: string, content: string) {
+    this.state = {
+      ...this.state,
+      messages: this.state.messages.map((msg) =>
+        msg.id === id ? { ...msg, content } : msg
+      ),
+    };
+    this.emit();
+  }
 }
 
 export const chatStore = new ChatStore();
