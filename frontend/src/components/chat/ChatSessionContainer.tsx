@@ -17,8 +17,9 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   const [inputText, setInputText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>("");
+  const streamingAiIdRef = useRef<string | null>(null);   // track the AI message being streamed
 
-  const handleSend = async (text: string) => {
+  const sendMessage = async (text: string) => {
     lastUserMessageRef.current = text;
 
     if (editingMessageId) {
@@ -45,13 +46,16 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
 
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
+      streamingAiIdRef.current = aiMessageId;                  // mark as currently streaming
 
       startStream(aiText, aiMessageId, () => {
+        streamingAiIdRef.current = null;                       // streaming finished naturally
         chatStore.setLoading(false);
       });
     } catch (err: unknown) {
+      streamingAiIdRef.current = null;
       if (err instanceof DOMException && err.name === "AbortError") {
-        // stop pressed – message stays as bubble + warning
+        // stop pressed – handled in handleStop
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
@@ -65,24 +69,50 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     }
   };
 
+  const handleSend = async (text: string) => {
+    await sendMessage(text);
+    setInputText("");
+  };
+
   const handleStop = () => {
+    // 1. Abort the fetch
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    // 2. Stop the streaming interval
     stopStream();
+
+    // 3. Remove the partial AI message if it exists
+    if (streamingAiIdRef.current) {
+      chatStore.removeFrom(streamingAiIdRef.current);
+      streamingAiIdRef.current = null;
+    }
+
     setEditingMessageId(null);
 
+    // 4. Add the stop warning
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
       role: "assistant",
       content: "pesan telah dihentikan",
     });
 
-    // Clear the input bar — do NOT restore the old message
     setInputText("");
     chatStore.setLoading(false);
   };
+
+  const handleRetry = useCallback(async (text: string) => {
+    // Remove the stopped user message and everything after it (the stop warning)
+    const messages = chatStore.getState().messages;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        chatStore.removeFrom(messages[i].id);
+        break;
+      }
+    }
+    await sendMessage(text);
+  }, []);
 
   const handleEditMessage = useCallback((text: string, messageId: string) => {
     setEditingMessageId(messageId);
@@ -111,6 +141,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       <MessageListView
         isLoading={isLoading}
         onEditMessage={handleEditMessage}
+        onRetryMessage={handleRetry}
         editingMessageId={editingMessageId}
       />
       <div style={{
