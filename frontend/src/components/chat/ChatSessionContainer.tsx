@@ -37,16 +37,15 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       const data = await res.json();
       const aiText = data.response || "(tidak ada balasan)";
 
-      // Create placeholder AI message and stream into it
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
 
       startStream(aiText, aiMessageId, () => {
-        chatStore.setLoading(false);    // done streaming
+        chatStore.setLoading(false);
       });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // stop pressed – handled in handleStop
+        // stop pressed
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
@@ -65,7 +64,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    stopStream();   // stop word‑by‑word streaming
+    stopStream();
 
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
@@ -85,7 +84,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       backgroundColor: "transparent",
       position: "relative",
     }}>
-      <MessageListView />
+      <MessageListView isLoading={isLoading} />
       <div style={{
         position: "fixed",
         bottom: 0,
