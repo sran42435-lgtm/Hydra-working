@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { chatStore } from "../../store/chat_state_store";
 import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
@@ -15,10 +15,16 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   const { startStream, stopStream } = useStreamResponse();
 
   const [inputText, setInputText] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>("");
 
   const handleSend = async (text: string) => {
     lastUserMessageRef.current = text;
+
+    if (editingMessageId) {
+      chatStore.removeFrom(editingMessageId);
+      setEditingMessageId(null);
+    }
 
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
@@ -45,7 +51,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // stop pressed
+        // stop pressed – message stays as bubble + warning
       } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
@@ -65,6 +71,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       abortControllerRef.current = null;
     }
     stopStream();
+    setEditingMessageId(null);
 
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
@@ -72,9 +79,26 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       content: "pesan telah dihentikan",
     });
 
-    setInputText(lastUserMessageRef.current);
+    // Clear the input bar — do NOT restore the old message
+    setInputText("");
     chatStore.setLoading(false);
   };
+
+  const handleEditMessage = useCallback((text: string, messageId: string) => {
+    setEditingMessageId(messageId);
+    setInputText(text);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessageId(null);
+    setInputText("");
+  }, []);
+
+  const handleTextChange = useCallback((text: string) => {
+    setInputText(text);
+  }, []);
+
+  const isEditing = editingMessageId !== null;
 
   return (
     <div style={{
@@ -84,7 +108,11 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       backgroundColor: "transparent",
       position: "relative",
     }}>
-      <MessageListView isLoading={isLoading} />
+      <MessageListView
+        isLoading={isLoading}
+        onEditMessage={handleEditMessage}
+        editingMessageId={editingMessageId}
+      />
       <div style={{
         position: "fixed",
         bottom: 0,
@@ -103,11 +131,13 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         }}>
           <ChatInputBar
             text={inputText}
-            onTextChange={setInputText}
+            onTextChange={handleTextChange}
             onSend={handleSend}
             onStop={handleStop}
+            onCancelEdit={handleCancelEdit}
             disabled={isLoading}
             isLoading={isLoading}
+            isEditing={isEditing}
           />
         </div>
       </div>

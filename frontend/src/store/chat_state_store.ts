@@ -68,13 +68,23 @@ class ChatStore {
     this.emit();
   }
 
-  // NEW: update the content of a specific message by id
   updateMessageContent(id: string, content: string) {
     this.state = {
       ...this.state,
       messages: this.state.messages.map((msg) =>
         msg.id === id ? { ...msg, content } : msg
       ),
+    };
+    this.emit();
+  }
+
+  // Remove a message and everything after it
+  removeFrom(id: string) {
+    const index = this.state.messages.findIndex((m) => m.id === id);
+    if (index === -1) return;
+    this.state = {
+      ...this.state,
+      messages: this.state.messages.slice(0, index),
     };
     this.emit();
   }

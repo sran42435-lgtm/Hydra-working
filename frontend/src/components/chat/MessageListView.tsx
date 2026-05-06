@@ -5,6 +5,8 @@ import { ThinkingBubble } from "./ThinkingBubble";
 
 interface MessageListViewProps {
   isLoading: boolean;
+  onEditMessage?: (text: string, messageId: string) => void;
+  editingMessageId?: string | null;
 }
 
 const ScrollDownIcon = () => (
@@ -14,9 +16,17 @@ const ScrollDownIcon = () => (
 );
 
 const ClipboardIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
     <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+  </svg>
+);
+
+const PencilLineIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 21h8"/>
+    <path d="m15 5 4 4"/>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
   </svg>
 );
 
@@ -26,16 +36,22 @@ const CheckIcon = () => (
   </svg>
 );
 
-export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) => {
+const LONG_PRESS_MS = 500;
+
+export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading, onEditMessage, editingMessageId }) => {
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef<boolean>(false);
+  const longPressTargetRef = useRef<string | null>(null);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isScrolling, setIsScrolling] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [actionBoardId, setActionBoardId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = chatStore.subscribe(() =>
@@ -47,7 +63,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
     };
   }, []);
 
-  // Merge consecutive assistant messages into one paragraph
   const mergedMessages = useMemo(() => {
     const result: Message[] = [];
     for (let i = 0; i < messages.length; i++) {
@@ -69,27 +84,30 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
     return result;
   }, [messages]);
 
-  // Auto‑scroll to bottom whenever messages change
+  // Find the index in mergedMessages of the editing target,
+  // then compute the list of IDs that should be hidden.
+  const hiddenIds = useMemo(() => {
+    if (!editingMessageId) return new Set<string>();
+    const idx = mergedMessages.findIndex((m) => m.id === editingMessageId);
+    if (idx === -1) return new Set<string>();
+    // Hide from that message onward
+    return new Set(mergedMessages.slice(idx).map((m) => m.id));
+  }, [mergedMessages, editingMessageId]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mergedMessages]);
 
-  // Detect if user has scrolled up, and track active scrolling
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
     const threshold = 50;
     const atBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     setIsAtBottom(atBottom);
-
     setIsScrolling(true);
-
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => {
-      setIsScrolling(false);
-    }, 0);
+    scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 0);
   }, []);
 
   useEffect(() => {
@@ -102,21 +120,21 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
     };
   }, [handleScroll]);
 
+  useEffect(() => {
+    if (isScrolling) setActionBoardId(null);
+  }, [isScrolling]);
+
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Robust copy with fallback
   const copyToClipboard = async (text: string) => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
         return true;
       }
-    } catch {
-      // fallback below
-    }
-    // Fallback for older browsers / non‑HTTPS
+    } catch { /* fallback */ }
     const textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
@@ -141,12 +159,38 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = setTimeout(() => setCopiedId(null), 2000);
     }
+    setActionBoardId(null);
   };
 
-  // Button visible when NOT at bottom AND NOT actively scrolling
+  const handleEdit = (text: string, id: string) => {
+    onEditMessage?.(text, id);
+    setActionBoardId(null);
+  };
+
+  const startLongPress = (msgId: string) => {
+    longPressTargetRef.current = msgId;
+    longPressFiredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      if (longPressTargetRef.current === msgId) {
+        longPressFiredRef.current = true;
+        setActionBoardId(msgId);
+      }
+    }, LONG_PRESS_MS);
+  };
+
+  const endLongPress = () => {
+    if (!longPressFiredRef.current) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+    longPressTargetRef.current = null;
+  };
+
   const showScrollButton = !isAtBottom && !isScrolling;
 
-  // Determine the ID of the last assistant message (being streamed)
   const lastAssistantMessageId = useMemo(() => {
     for (let i = mergedMessages.length - 1; i >= 0; i--) {
       if (mergedMessages[i].role === "assistant" && !mergedMessages[i].id.endsWith("_stopped")) {
@@ -166,6 +210,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
         backgroundColor: "#fafafa",
         position: "relative",
       }}
+      onClick={() => setActionBoardId(null)}
     >
       <style>{`
         @keyframes scaleIn {
@@ -175,6 +220,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
         @keyframes drawLine {
           0% { transform: scaleX(0); }
           100% { transform: scaleX(1); }
+        }
+        @keyframes fadeInBoard {
+          0% { opacity: 0; transform: translateY(-4px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
@@ -194,6 +243,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
       )}
 
       {mergedMessages.map((msg) => {
+        // Hide messages that are part of the edit chain
+        if (hiddenIds.has(msg.id)) return null;
+
         const isStoppedMessage = msg.id.endsWith("_stopped");
 
         if (isStoppedMessage) {
@@ -229,7 +281,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
               flexDirection: "column",
               alignItems: "flex-start",
             }}>
-              {/* AI text */}
               <div style={{
                 width: "100%",
                 padding: "8px 0 0 0",
@@ -244,10 +295,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
                 {cleanContent}
               </div>
 
-              {/* Boundary line + copy button appear only after streaming finishes */}
               {cleanContent && !isStreamingThis && (
                 <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                  {/* Animated boundary line */}
                   <div style={{
                     width: "100%",
                     height: 1,
@@ -256,8 +305,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
                     transformOrigin: "left center",
                     animation: "drawLine 0.4s ease forwards",
                   }} />
-
-                  {/* Copy button – icon only, below the line, with increased click area */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -289,45 +336,139 @@ export const MessageListView: React.FC<MessageListViewProps> = ({ isLoading }) =
           );
         }
 
-        // User message
+        // ========== USER MESSAGE ==========
+        const isActionOpen = actionBoardId === msg.id;
+
         return (
           <div key={msg.id} style={{
             marginBottom: 12,
             display: "flex",
-            justifyContent: "flex-end",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            position: "relative",
           }}>
-            <div style={{
-              maxWidth: "75%",
-              padding: "12px 18px",
-              borderRadius: 20,
-              backgroundColor: "rgba(224,123,90,0.75)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              color: "#fff",
-              borderTopRightRadius: 4,
-              borderTopLeftRadius: 20,
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: 18,
-              fontWeight: 900,
-              lineHeight: 1.5,
-              whiteSpace: "normal",
-              overflowWrap: "break-word",
-              border: "1px solid rgba(255,255,255,0.5)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-            }}>
+            <div
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                startLongPress(msg.id);
+              }}
+              onTouchEnd={endLongPress}
+              onTouchMove={endLongPress}
+              onTouchCancel={endLongPress}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                startLongPress(msg.id);
+              }}
+              onMouseUp={endLongPress}
+              onMouseLeave={endLongPress}
+              onContextMenu={(e) => e.preventDefault()}
+              style={{
+                maxWidth: "75%",
+                padding: "12px 18px",
+                borderRadius: 20,
+                backgroundColor: "rgba(224,123,90,0.75)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                color: "#fff",
+                borderTopRightRadius: 4,
+                borderTopLeftRadius: 20,
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: 18,
+                fontWeight: 900,
+                lineHeight: 1.5,
+                whiteSpace: "normal",
+                overflowWrap: "break-word",
+                border: "1px solid rgba(255,255,255,0.5)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                cursor: "pointer",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                touchAction: "manipulation",
+              }}
+            >
               {msg.content}
             </div>
+
+            {isActionOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  marginTop: 6,
+                  minWidth: 180,
+                  backgroundColor: "rgba(255,255,255,0.95)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  borderRadius: 14,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  padding: "4px 0",
+                  animation: "fadeInBoard 0.2s ease forwards",
+                  zIndex: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleCopy(msg.content, msg.id)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    color: "#1a1a1a",
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "background-color 0.1s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <span>Copy message</span>
+                  <ClipboardIcon />
+                </button>
+
+                <div style={{ height: 1, backgroundColor: "rgba(0,0,0,0.05)", margin: "2px 0" }} />
+
+                <button
+                  type="button"
+                  onClick={() => handleEdit(msg.content, msg.id)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    color: "#1a1a1a",
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "background-color 0.1s ease",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                >
+                  <span>Edit</span>
+                  <PencilLineIcon />
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
 
-      {/* Thinking bubble appears when loading */}
       <ThinkingBubble isLoading={isLoading} />
-
-      {/* Invisible element for auto‑scroll */}
       <div ref={bottomRef} />
 
-      {/* Scroll‑to‑bottom floating button */}
       {showScrollButton && (
         <button
           onClick={scrollToBottom}
