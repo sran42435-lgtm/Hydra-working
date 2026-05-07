@@ -46,6 +46,15 @@ const RetryIcon = () => (
   </svg>
 );
 
+const ScrollTextIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 12h-5" />
+    <path d="M15 8h-5" />
+    <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+    <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
+  </svg>
+);
+
 // ---------- Slow-drag hook ----------
 function useSlowDrag(initialX: number, initialY: number) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
@@ -58,7 +67,16 @@ function useSlowDrag(initialX: number, initialY: number) {
       const dy = targetRef.current.y - prev.y;
       const newX = prev.x + dx * 0.4;
       const newY = prev.y + dy * 0.4;
-      return { x: newX, y: newY };
+      const boardW = 200;
+      const boardH = 150;
+      const maxX = window.innerWidth - boardW / 2;
+      const maxY = window.innerHeight - boardH / 2;
+      const minX = boardW / 2;
+      const minY = boardH / 2;
+      return {
+        x: Math.min(maxX, Math.max(minX, newX)),
+        y: Math.min(maxY, Math.max(minY, newY)),
+      };
     });
     rafRef.current = requestAnimationFrame(updatePosition);
   }, []);
@@ -92,8 +110,7 @@ function useSlowDrag(initialX: number, initialY: number) {
 
   return { pos, startDrag, stopDrag, setTarget, reset };
 }
-
-// --------------------------------
+// ----------------------------------------------------------
 
 export const MessageListView: React.FC<MessageListViewProps> = ({
   isLoading,
@@ -118,20 +135,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [spinningRetryId, setSpinningRetryId] = useState<string | null>(null);
   const [spinningRegenerateId, setSpinningRegenerateId] = useState<string | null>(null);
 
-  // Sheet state
   const [selectedAiContent, setSelectedAiContent] = useState<string>("");
+  const [pressedAiId, setPressedAiId] = useState<string | null>(null);
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
   const [isDraggingBoard, setIsDraggingBoard] = useState(false);
-
-  const [boardPopScale, setBoardPopScale] = useState(0.85);
-  useEffect(() => {
-    if (actionBoardId) {
-      setBoardPopScale(0.85);
-      const timer = setTimeout(() => setBoardPopScale(1), 20);
-      return () => clearTimeout(timer);
-    }
-  }, [actionBoardId]);
+  const [isBoardPressed, setIsBoardPressed] = useState(false);
+  const [hasBoardAppeared, setHasBoardAppeared] = useState(false);
 
   useEffect(() => {
     const handler = () => setActionBoardId(null);
@@ -266,6 +276,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     }, 600);
   };
 
+  // Buka sheet langsung (tanpa animasi, tanpa long-press)
+  const handleOpenSheet = useCallback((content: string) => {
+    setSelectedAiContent(content);
+  }, []);
+
   const openBoard = (msgId: string, clientX: number, clientY: number) => {
     if (actionBoardId === msgId) {
       setActionBoardId(null);
@@ -274,31 +289,33 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     resetBoard(clientX, clientY + 70);
     setTarget(clientX, clientY + 70);
     setActionBoardId(msgId);
+    setHasBoardAppeared(false);
   };
 
-  // ---------- Long press on AI message ----------
-  const startAiLongPress = (msgId: string, content: string) => {
+  const startAiLongPress = useCallback((msgId: string, content: string) => {
     longPressTargetRef.current = msgId;
     longPressFiredRef.current = false;
+    setPressedAiId(msgId);
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       if (longPressTargetRef.current === msgId) {
         longPressFiredRef.current = true;
+        setPressedAiId(null);
         setSelectedAiContent(content);
       }
     }, 500);
-  };
+  }, []);
 
-  const endAiLongPress = () => {
+  const endAiLongPress = useCallback(() => {
     if (!longPressFiredRef.current) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
       }
+      setPressedAiId(null);
     }
     longPressTargetRef.current = null;
-  };
-  // -------------------------------------------------
+  }, []);
 
   const showScrollButton = !isAtBottom && !isScrolling;
 
@@ -311,7 +328,25 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     return null;
   }, [mergedMessages]);
 
-  const boardActiveScale = boardPopScale !== 1 ? boardPopScale : (isDraggingBoard ? 0.95 : 1);
+  const boardActiveScale = isBoardPressed ? 0.76 : (isDraggingBoard ? 0.76 : 1);
+
+  const boardAnimation = (() => {
+    if (hasBoardAppeared) return "none";
+    if (isDraggingBoard || isBoardPressed) return "none";
+    return "liquidGlassPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
+  })();
+
+  useEffect(() => {
+    if (!actionBoardId) return;
+    const timer = setTimeout(() => setHasBoardAppeared(true), 600);
+    return () => clearTimeout(timer);
+  }, [actionBoardId]);
+
+  useEffect(() => {
+    if (isDraggingBoard || isBoardPressed) {
+      setHasBoardAppeared(true);
+    }
+  }, [isDraggingBoard, isBoardPressed]);
 
   const chatFont = "'Nunito', sans-serif";
   const chatFontSize = 22;
@@ -345,6 +380,24 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         @keyframes spinOnce {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(-360deg); }
+        }
+        @keyframes liquidGlassPop {
+          0% {
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+          }
+          60% {
+            transform: translate(-50%, -50%) scale(1.05);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+          }
         }
       `}</style>
 
@@ -398,6 +451,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           const isCopied = copiedId === msg.id;
           const isStreamingThis = isLoading && msg.id === lastAssistantMessageId;
           const isSpinningRegen = spinningRegenerateId === msg.id;
+          const isPressed = pressedAiId === msg.id;
 
           const prevMsg = mergedMessages[idx - 1];
           const userText = prevMsg?.role === "user" ? prevMsg.content : "";
@@ -436,6 +490,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
                   cursor: isStreamingThis ? "default" : "pointer",
+                  transform: isPressed ? "scale(0.87)" : "scale(1)",
                   transition: "transform 0.15s ease",
                   userSelect: "none",
                   WebkitUserSelect: "none",
@@ -455,6 +510,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     animation: "drawLine 0.4s ease forwards",
                   }} />
                   <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 4 }}>
+                    {/* Copy */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -477,6 +533,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     >
                       {isCopied ? <CheckIcon /> : <ClipboardIcon />}
                     </button>
+                    {/* Regenerate */}
                     {userText && (
                       <button
                         type="button"
@@ -502,6 +559,29 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                         <RetryIcon />
                       </button>
                     )}
+                    {/* Scroll‑text – buka sheet langsung */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenSheet(cleanContent);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 8,
+                        border: "none",
+                        borderRadius: 6,
+                        backgroundColor: "transparent",
+                        color: "#999",
+                        cursor: "pointer",
+                        transition: "color 0.15s ease",
+                      }}
+                      aria-label="Buka teks"
+                    >
+                      <ScrollTextIcon />
+                    </button>
                   </div>
                 </div>
               )}
@@ -593,6 +673,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
             {isActionOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
+                onTouchStart={() => setIsBoardPressed(true)}
+                onTouchEnd={() => setIsBoardPressed(false)}
+                onTouchCancel={() => setIsBoardPressed(false)}
+                onMouseDown={() => setIsBoardPressed(true)}
+                onMouseUp={() => setIsBoardPressed(false)}
+                onMouseLeave={() => setIsBoardPressed(false)}
                 style={{
                   position: "fixed",
                   left: boardPos.x,
@@ -612,6 +698,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   userSelect: "none",
                   WebkitUserSelect: "none",
                   touchAction: "none",
+                  animation: boardAnimation,
+                  opacity: (isDraggingBoard || isBoardPressed) ? 1 : undefined,
                 }}
               >
                 <div
@@ -688,7 +776,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     border: "none",
                     backgroundColor: "transparent",
                     color: "#1a1a1a",
-                    fontFamily: "'Outfit', sans-serif",
+                    fontFamily: chatFont,
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -718,7 +806,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     border: "none",
                     backgroundColor: "transparent",
                     color: "#1a1a1a",
-                    fontFamily: "'Outfit', sans-serif",
+                    fontFamily: chatFont,
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
