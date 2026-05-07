@@ -17,18 +17,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   const [inputText, setInputText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>("");
-  const streamingAiIdRef = useRef<string | null>(null);   // track the AI message being streamed
+  const streamingAiIdRef = useRef<string | null>(null);
 
-  const sendMessage = async (text: string) => {
-    lastUserMessageRef.current = text;
-
-    if (editingMessageId) {
-      chatStore.removeFrom(editingMessageId);
-      setEditingMessageId(null);
-    }
-
-    const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
-    chatStore.addMessage(userMessage);
+  // Core: send a text to the AI and stream the response
+  const sendToAi = useCallback(async (text: string) => {
     chatStore.setLoading(true);
 
     const controller = new AbortController();
@@ -46,10 +38,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
 
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
-      streamingAiIdRef.current = aiMessageId;                  // mark as currently streaming
+      streamingAiIdRef.current = aiMessageId;
 
       startStream(aiText, aiMessageId, () => {
-        streamingAiIdRef.current = null;                       // streaming finished naturally
+        streamingAiIdRef.current = null;
         chatStore.setLoading(false);
       });
     } catch (err: unknown) {
@@ -67,31 +59,36 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     } finally {
       abortControllerRef.current = null;
     }
-  };
+  }, [startStream]);
 
-  const handleSend = async (text: string) => {
-    await sendMessage(text);
+  const handleSend = useCallback(async (text: string) => {
+    lastUserMessageRef.current = text;
+
+    if (editingMessageId) {
+      chatStore.removeFrom(editingMessageId);
+      setEditingMessageId(null);
+    }
+
+    const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
+    chatStore.addMessage(userMessage);
+
+    await sendToAi(text);
     setInputText("");
-  };
+  }, [editingMessageId, sendToAi]);
 
   const handleStop = () => {
-    // 1. Abort the fetch
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    // 2. Stop the streaming interval
     stopStream();
+    setEditingMessageId(null);
 
-    // 3. Remove the partial AI message if it exists
     if (streamingAiIdRef.current) {
       chatStore.removeFrom(streamingAiIdRef.current);
       streamingAiIdRef.current = null;
     }
 
-    setEditingMessageId(null);
-
-    // 4. Add the stop warning
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
       role: "assistant",
@@ -103,7 +100,6 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   };
 
   const handleRetry = useCallback(async (text: string) => {
-    // Remove the stopped user message and everything after it (the stop warning)
     const messages = chatStore.getState().messages;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
@@ -111,8 +107,16 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         break;
       }
     }
-    await sendMessage(text);
-  }, []);
+    await handleSend(text);
+  }, [handleSend]);
+
+  // Regenerate AI response: remove old AI, keep user message, re-send
+  const handleRegenerate = useCallback(async (userText: string, aiMessageId: string) => {
+    // Remove the AI message and everything after it (stop message, etc.)
+    chatStore.removeFrom(aiMessageId);
+    // Send the same user text to get a fresh AI response
+    await sendToAi(userText);
+  }, [sendToAi]);
 
   const handleEditMessage = useCallback((text: string, messageId: string) => {
     setEditingMessageId(messageId);
@@ -142,6 +146,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         isLoading={isLoading}
         onEditMessage={handleEditMessage}
         onRetryMessage={handleRetry}
+        onRegenerateMessage={handleRegenerate}
         editingMessageId={editingMessageId}
       />
       <div style={{

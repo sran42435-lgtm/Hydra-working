@@ -7,6 +7,7 @@ interface MessageListViewProps {
   isLoading: boolean;
   onEditMessage?: (text: string, messageId: string) => void;
   onRetryMessage?: (text: string) => void;
+  onRegenerateMessage?: (userText: string, aiMessageId: string) => void;
   editingMessageId?: string | null;
 }
 
@@ -97,6 +98,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   isLoading,
   onEditMessage,
   onRetryMessage,
+  onRegenerateMessage,
   editingMessageId,
 }) => {
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
@@ -110,11 +112,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionBoardId, setActionBoardId] = useState<string | null>(null);
   const [spinningRetryId, setSpinningRetryId] = useState<string | null>(null);
+  const [spinningRegenerateId, setSpinningRegenerateId] = useState<string | null>(null);
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
   const [isDraggingBoard, setIsDraggingBoard] = useState(false);
 
-  // Pop-in effect
   const [boardPopScale, setBoardPopScale] = useState(0.85);
   useEffect(() => {
     if (actionBoardId) {
@@ -243,10 +245,16 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     }, 600);
   };
 
-  // Single tap opens the board
+  const handleRegenerate = (userText: string, aiMsgId: string) => {
+    setSpinningRegenerateId(aiMsgId);
+    setTimeout(() => {
+      setSpinningRegenerateId(null);
+      onRegenerateMessage?.(userText, aiMsgId);
+    }, 600);
+  };
+
   const openBoard = (msgId: string, clientX: number, clientY: number) => {
     if (actionBoardId === msgId) {
-      // Toggle off if already open
       setActionBoardId(null);
       return;
     }
@@ -346,6 +354,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
           const isCopied = copiedId === msg.id;
           const isStreamingThis = isLoading && msg.id === lastAssistantMessageId;
+          const isSpinningRegen = spinningRegenerateId === msg.id;
+
+          // Find the preceding user message text for regeneration
+          const prevMsg = mergedMessages[idx - 1];
+          const userText = prevMsg?.role === "user" ? prevMsg.content : "";
 
           return (
             <div key={msg.id} style={{
@@ -378,31 +391,58 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     transformOrigin: "left center",
                     animation: "drawLine 0.4s ease forwards",
                   }} />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCopy(cleanContent, msg.id);
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginTop: 8,
-                      padding: 8,
-                      border: "none",
-                      borderRadius: 6,
-                      backgroundColor: "transparent",
-                      color: isCopied ? "#4CAF50" : "#999",
-                      cursor: "pointer",
-                      transition: "color 0.15s ease",
-                      fontSize: 16,
-                      lineHeight: 1,
-                    }}
-                    aria-label="Salin pesan"
-                  >
-                    {isCopied ? <CheckIcon /> : <ClipboardIcon />}
-                  </button>
+                  {/* Row with copy + regenerate buttons */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopy(cleanContent, msg.id);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 8,
+                        border: "none",
+                        borderRadius: 6,
+                        backgroundColor: "transparent",
+                        color: isCopied ? "#4CAF50" : "#999",
+                        cursor: "pointer",
+                        transition: "color 0.15s ease",
+                        fontSize: 16,
+                        lineHeight: 1,
+                      }}
+                      aria-label="Salin pesan"
+                    >
+                      {isCopied ? <CheckIcon /> : <ClipboardIcon />}
+                    </button>
+                    {userText && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRegenerate(userText, msg.id);
+                        }}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 8,
+                          border: "none",
+                          borderRadius: 6,
+                          backgroundColor: "transparent",
+                          color: "#999",
+                          cursor: "pointer",
+                          transition: "color 0.15s ease",
+                          animation: isSpinningRegen ? "spinOnce 0.6s ease-in-out" : "none",
+                        }}
+                        aria-label="Kirim ulang"
+                      >
+                        <RetryIcon />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -514,7 +554,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   touchAction: "none",
                 }}
               >
-                {/* Drag handle – single pill, large touch area */}
                 <div
                   onTouchStart={(e) => {
                     e.stopPropagation();
@@ -574,7 +613,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   }} />
                 </div>
 
-                {/* Copy button */}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -605,7 +643,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
                 <div style={{ height: 1, backgroundColor: "rgba(0,0,0,0.05)", margin: "2px 0" }} />
 
-                {/* Edit button */}
                 <button
                   type="button"
                   onClick={(e) => {
