@@ -44,7 +44,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setIsComposing] = useState(false);
 
-  // Auto‑resize textarea
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -91,6 +90,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       ? "AI sedang merespons..."
       : "Ketik pesan...";
 
+  const chatFont = "'Nunito', sans-serif";
+
   return (
     <div style={{
       padding: "0 14px 8px",
@@ -99,7 +100,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       alignItems: "center",
       backgroundColor: "transparent",
     }}>
-      {/* Expandable container */}
       <div style={{
         width: "100%",
         position: "relative",
@@ -116,7 +116,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         display: "flex",
         flexDirection: "column",
       }}>
-        {/* Editing capsule + divider – only when editing */}
         {isEditing && (
           <>
             <div style={{
@@ -125,7 +124,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               justifyContent: "space-between",
               marginBottom: 8,
             }}>
-              {/* Capsule */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -169,7 +167,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
               </div>
             </div>
 
-            {/* Thin divider – same style as sidebar */}
             <div style={{
               width: "100%",
               height: 1,
@@ -179,7 +176,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </>
         )}
 
-        {/* Textarea */}
         <textarea
           ref={textareaRef}
           value={text}
@@ -195,8 +191,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             border: "none",
             backgroundColor: "transparent",
             color: "#1a1a1a",
-            fontFamily: "'Outfit', sans-serif",
-            fontSize: 16,
+            fontFamily: chatFont,
+            fontSize: 18,        // increased from 17
+            fontWeight: 900,
             lineHeight: 1.5,
             outline: "none",
             resize: "none",
@@ -208,7 +205,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           }}
         />
 
-        {/* Send / Stop button */}
         <button
           onClick={handleButtonClick}
           disabled={!isLoading && isSendDisabled}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { chatStore, Message } from "../../store/chat_state_store";
 import { HydraIcon } from "../ui/HydraIcon";
 import { ThinkingBubble } from "./ThinkingBubble";
+import { AIMessageSheet } from "./AIMessageSheet";
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -33,7 +34,7 @@ const PencilLineIcon = () => (
 );
 
 const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
@@ -106,6 +107,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef<boolean>(false);
+  const longPressTargetRef = useRef<string | null>(null);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -113,6 +117,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [actionBoardId, setActionBoardId] = useState<string | null>(null);
   const [spinningRetryId, setSpinningRetryId] = useState<string | null>(null);
   const [spinningRegenerateId, setSpinningRegenerateId] = useState<string | null>(null);
+
+  // Sheet state
+  const [selectedAiContent, setSelectedAiContent] = useState<string>("");
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
   const [isDraggingBoard, setIsDraggingBoard] = useState(false);
@@ -125,6 +132,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       return () => clearTimeout(timer);
     }
   }, [actionBoardId]);
+
+  useEffect(() => {
+    const handler = () => setActionBoardId(null);
+    document.addEventListener("closeActionBoard", handler);
+    return () => document.removeEventListener("closeActionBoard", handler);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = chatStore.subscribe(() =>
@@ -263,6 +276,30 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setActionBoardId(msgId);
   };
 
+  // ---------- Long press on AI message ----------
+  const startAiLongPress = (msgId: string, content: string) => {
+    longPressTargetRef.current = msgId;
+    longPressFiredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      if (longPressTargetRef.current === msgId) {
+        longPressFiredRef.current = true;
+        setSelectedAiContent(content);
+      }
+    }, 500);
+  };
+
+  const endAiLongPress = () => {
+    if (!longPressFiredRef.current) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+    longPressTargetRef.current = null;
+  };
+  // -------------------------------------------------
+
   const showScrollButton = !isAtBottom && !isScrolling;
 
   const lastAssistantMessageId = useMemo(() => {
@@ -275,6 +312,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, [mergedMessages]);
 
   const boardActiveScale = boardPopScale !== 1 ? boardPopScale : (isDraggingBoard ? 0.95 : 1);
+
+  const chatFont = "'Nunito', sans-serif";
+  const chatFontSize = 22;
+  const chatFontWeight = 900;
 
   return (
     <div
@@ -318,7 +359,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           textAlign: "center",
         }}>
           <HydraIcon size={48} />
-          <p style={{ marginTop: 12, color: "#1a1a1a" }}>Kirim pesan untuk memulai</p>
+          <p style={{ marginTop: 12, color: "#1a1a1a", fontFamily: chatFont, fontSize: chatFontSize, fontWeight: chatFontWeight }}>
+            Kirim pesan untuk memulai
+          </p>
         </div>
       )}
 
@@ -340,7 +383,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               <span style={{
                 color: "#EF4444",
                 fontStyle: "italic",
-                fontFamily: "'Outfit', sans-serif",
+                fontFamily: chatFont,
                 fontSize: 14,
                 fontWeight: 500,
               }}>
@@ -356,7 +399,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           const isStreamingThis = isLoading && msg.id === lastAssistantMessageId;
           const isSpinningRegen = spinningRegenerateId === msg.id;
 
-          // Find the preceding user message text for regeneration
           const prevMsg = mergedMessages[idx - 1];
           const userText = prevMsg?.role === "user" ? prevMsg.content : "";
 
@@ -367,17 +409,38 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               flexDirection: "column",
               alignItems: "flex-start",
             }}>
-              <div style={{
-                width: "100%",
-                padding: "8px 0 0 0",
-                color: "#1a1a1a",
-                fontFamily: "'Outfit', sans-serif",
-                fontSize: 18,
-                fontWeight: 900,
-                lineHeight: 1.5,
-                whiteSpace: "normal",
-                overflowWrap: "break-word",
-              }}>
+              <div
+                onTouchStart={(e) => {
+                  if (isStreamingThis) return;
+                  e.stopPropagation();
+                  startAiLongPress(msg.id, cleanContent);
+                }}
+                onTouchEnd={endAiLongPress}
+                onTouchMove={endAiLongPress}
+                onTouchCancel={endAiLongPress}
+                onMouseDown={(e) => {
+                  if (isStreamingThis) return;
+                  e.stopPropagation();
+                  startAiLongPress(msg.id, cleanContent);
+                }}
+                onMouseUp={endAiLongPress}
+                onMouseLeave={endAiLongPress}
+                style={{
+                  width: "100%",
+                  padding: "8px 0 0 0",
+                  color: "#1a1a1a",
+                  fontFamily: chatFont,
+                  fontSize: chatFontSize,
+                  fontWeight: chatFontWeight,
+                  lineHeight: 1.5,
+                  whiteSpace: "normal",
+                  overflowWrap: "break-word",
+                  cursor: isStreamingThis ? "default" : "pointer",
+                  transition: "transform 0.15s ease",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+              >
                 {cleanContent}
               </div>
 
@@ -391,8 +454,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     transformOrigin: "left center",
                     animation: "drawLine 0.4s ease forwards",
                   }} />
-                  {/* Row with copy + regenerate buttons */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 4 }}>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -410,8 +472,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                         color: isCopied ? "#4CAF50" : "#999",
                         cursor: "pointer",
                         transition: "color 0.15s ease",
-                        fontSize: 16,
-                        lineHeight: 1,
                       }}
                       aria-label="Salin pesan"
                     >
@@ -511,9 +571,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   color: "#fff",
                   borderTopRightRadius: 4,
                   borderTopLeftRadius: 20,
-                  fontFamily: "'Outfit', sans-serif",
-                  fontSize: 18,
-                  fontWeight: 900,
+                  fontFamily: chatFont,
+                  fontSize: chatFontSize,
+                  fontWeight: chatFontWeight,
                   lineHeight: 1.5,
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
@@ -609,7 +669,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     width: 40,
                     height: 5,
                     borderRadius: 3,
-                    backgroundColor: "rgba(0,0,0,0.2)",
+                    backgroundColor: "rgba(59, 130, 246, 0.6)",
                   }} />
                 </div>
 
@@ -706,6 +766,14 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         >
           <ScrollDownIcon />
         </button>
+      )}
+
+      {/* AI message sheet */}
+      {selectedAiContent && (
+        <AIMessageSheet
+          content={selectedAiContent}
+          onClose={() => setSelectedAiContent("")}
+        />
       )}
     </div>
   );

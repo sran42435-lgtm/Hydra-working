@@ -98,7 +98,6 @@ export const ChatPageMain: React.FC = () => {
     return { ...base, width: 260, transform: "translateX(0)" };
   };
 
-  // Press animation – only on mobile, speedy & more shrink
   const getPressStyle = (buttonId: string): React.CSSProperties => {
     if (!isMobile) return {};
     return {
@@ -107,7 +106,6 @@ export const ChatPageMain: React.FC = () => {
     };
   };
 
-  // Common floating button style – smaller default size, moved up
   const floatingBtnBase: React.CSSProperties = {
     position: "fixed",
     zIndex: 5,
@@ -116,7 +114,7 @@ export const ChatPageMain: React.FC = () => {
     WebkitBackdropFilter: "blur(24px)",
     border: "1px solid rgba(0,0,0,0.04)",
     borderRadius: "50%",
-    padding: "8px",                    // ↓ smaller default bubble
+    padding: "8px",
     color: "#1a1a1a",
     cursor: "pointer",
     display: "flex",
@@ -132,10 +130,16 @@ export const ChatPageMain: React.FC = () => {
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
-      {/* Hamburger – mobile only, slightly higher */}
       {isMobile && (
         <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+          onClick={() => {
+            const opening = !sidebarOpen;
+            setSidebarOpen(opening);
+            if (opening) {
+              // Dispatch event so the action board closes
+              document.dispatchEvent(new CustomEvent("closeActionBoard"));
+            }
+          }}
           onMouseDown={() => setPressedBtn("hamburger")}
           onMouseUp={() => setPressedBtn(null)}
           onMouseLeave={() => setPressedBtn(null)}
@@ -144,7 +148,7 @@ export const ChatPageMain: React.FC = () => {
           onTouchCancel={() => setPressedBtn(null)}
           style={{
             ...floatingBtnBase,
-            top: 8,                   // moved up from 12
+            top: 8,
             left: 12,
             ...getPressStyle("hamburger"),
           }}
@@ -153,7 +157,6 @@ export const ChatPageMain: React.FC = () => {
         </button>
       )}
       
-      {/* New Chat button – always visible, also moved up */}
       <button
         onClick={handleNewChat}
         onMouseDown={() => setPressedBtn("newchat")}
@@ -164,7 +167,7 @@ export const ChatPageMain: React.FC = () => {
         onTouchCancel={() => setPressedBtn(null)}
         style={{
           ...floatingBtnBase,
-          top: 8,                   // moved up from 12
+          top: 8,
           right: 12,
           ...getPressStyle("newchat"),
         }}
@@ -172,7 +175,6 @@ export const ChatPageMain: React.FC = () => {
         <NewChatIcon />
       </button>
 
-      {/* Overlay */}
       <div
         onClick={closeSidebar}
         style={{
@@ -184,7 +186,6 @@ export const ChatPageMain: React.FC = () => {
         }}
       />
 
-      {/* Sidebar Wrapper */}
       <div style={getWrapperStyle()}>
         <ChatPageSidebar
           onNewChat={handleNewChat}
@@ -196,7 +197,6 @@ export const ChatPageMain: React.FC = () => {
         />
       </div>
       
-      {/* Main chat area */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         <ChatSessionContainer isDesktop={!isMobile} />
       </div>
