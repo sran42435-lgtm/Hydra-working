@@ -399,7 +399,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         }
       `}</style>
 
-      {/* Action board backdrop – closes board on tap outside */}
       {actionBoardId && (
         <div
           onClick={(e) => {
