@@ -68,7 +68,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
 
   const extraPadding = isMobile ? Math.max(0, dragOffset) : 0;
 
-  const sidebarFont = "'Nunito', sans-serif";
+  const sidebarFont = "'Literata', serif";
 
   return (
     <div
@@ -97,7 +97,6 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
       onMouseLeave={handleMouseUp}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Drag handle – mobile only, blue, shifted left */}
       {isMobile && (
         <div
           style={{

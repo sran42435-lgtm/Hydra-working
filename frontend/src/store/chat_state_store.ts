@@ -9,6 +9,7 @@ export type Message = {
 type ChatState = {
   messages: Message[];
   isLoading: boolean;
+  streamingAiId: string | null;   // ID pesan AI yang sedang streaming
 };
 
 type Listener = () => void;
@@ -17,6 +18,7 @@ class ChatStore {
   private state: ChatState = {
     messages: [],
     isLoading: false,
+    streamingAiId: null,
   };
 
   private listeners: Listener[] = [];
@@ -45,26 +47,17 @@ class ChatStore {
   }
 
   setMessages(messages: Message[]) {
-    this.state = {
-      ...this.state,
-      messages: [...messages],
-    };
+    this.state = { ...this.state, messages: [...messages] };
     this.emit();
   }
 
   setLoading(isLoading: boolean) {
-    this.state = {
-      ...this.state,
-      isLoading,
-    };
+    this.state = { ...this.state, isLoading };
     this.emit();
   }
 
   clearMessages() {
-    this.state = {
-      ...this.state,
-      messages: [],
-    };
+    this.state = { ...this.state, messages: [] };
     this.emit();
   }
 
@@ -78,7 +71,6 @@ class ChatStore {
     this.emit();
   }
 
-  // Remove a message and everything after it
   removeFrom(id: string) {
     const index = this.state.messages.findIndex((m) => m.id === id);
     if (index === -1) return;
@@ -86,6 +78,12 @@ class ChatStore {
       ...this.state,
       messages: this.state.messages.slice(0, index),
     };
+    this.emit();
+  }
+
+  // ** Baru **
+  setStreamingAiId(id: string | null) {
+    this.state = { ...this.state, streamingAiId: id };
     this.emit();
   }
 }

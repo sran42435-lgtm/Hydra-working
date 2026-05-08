@@ -203,10 +203,11 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
         <div
           style={{
             flex: 1,
-            fontFamily: "'Nunito', sans-serif",
-            fontSize: 22,
-            fontWeight: 900,
-            lineHeight: 1.5,
+            fontFamily: "'Literata', serif",
+            fontSize: 24,
+            fontWeight: 700,
+            lineHeight: 1.45,
+            letterSpacing: "-0.02em",
             color: "#1a1a1a",
             overflowY: "auto",
             whiteSpace: "normal",

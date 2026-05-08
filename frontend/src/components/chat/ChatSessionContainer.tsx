@@ -17,12 +17,12 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   const [inputText, setInputText] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>("");
-  const streamingAiIdRef = useRef<string | null>(null);
 
   const sendToAi = useCallback(async (text: string) => {
     chatStore.setLoading(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
     try {
       const res = await fetch("/api/v1/chat", {
         method: "POST",
@@ -32,15 +32,18 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       });
       const data = await res.json();
       const aiText = data.response || "(tidak ada balasan)";
+
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
-      streamingAiIdRef.current = aiMessageId;
+      // ** Tandai bahwa pesan ini sedang streaming **
+      chatStore.setStreamingAiId(aiMessageId);
+
       startStream(aiText, aiMessageId, () => {
-        streamingAiIdRef.current = null;
+        chatStore.setStreamingAiId(null);  // streaming selesai
         chatStore.setLoading(false);
       });
     } catch (err: unknown) {
-      streamingAiIdRef.current = null;
+      chatStore.setStreamingAiId(null);
       if (err instanceof DOMException && err.name === "AbortError") {
         // stop pressed
       } else {
@@ -75,15 +78,21 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     }
     stopStream();
     setEditingMessageId(null);
-    if (streamingAiIdRef.current) {
-      chatStore.removeFrom(streamingAiIdRef.current);
-      streamingAiIdRef.current = null;
+
+    chatStore.setStreamingAiId(null);
+
+    // Hapus pesan AI yang sedang streaming (jika ada)
+    const streamingId = chatStore.getState().streamingAiId;
+    if (streamingId) {
+      chatStore.removeFrom(streamingId);
     }
+
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
       role: "assistant",
       content: "pesan telah dihentikan",
     });
+
     setInputText("");
     chatStore.setLoading(false);
   };

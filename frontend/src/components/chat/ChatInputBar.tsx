@@ -90,7 +90,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       ? "AI sedang merespons..."
       : "Ketik pesan...";
 
-  const chatFont = "'Nunito', sans-serif";
+  const chatFont = "'Literata', serif";
 
   return (
     <div style={{
@@ -103,7 +103,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       <div style={{
         width: "100%",
         position: "relative",
-        backgroundColor: "rgba(255,255,255,0.8)",
+        backgroundColor: "#fdf6f0",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
@@ -136,7 +136,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
                   fontSize: 13,
                   fontWeight: 700,
                   color: "rgba(224,123,90,0.9)",
-                  fontFamily: "'Outfit', sans-serif",
+                  fontFamily: chatFont,
                   textTransform: "lowercase",
                 }}>
                   mengedit
@@ -192,9 +192,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             backgroundColor: "transparent",
             color: "#1a1a1a",
             fontFamily: chatFont,
-            fontSize: 18,        // increased from 17
-            fontWeight: 900,
-            lineHeight: 1.5,
+            fontSize: 20,
+            fontWeight: 700,
+            lineHeight: 1.45,
+            letterSpacing: "-0.01em",
             outline: "none",
             resize: "none",
             padding: isEditing ? "8px 0 52px 0" : "12px 0 52px 0",

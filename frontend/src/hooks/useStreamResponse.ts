@@ -1,49 +1,40 @@
-/**
- * useStreamResponse Hook - Phase 1
- * Simulates streaming a text response word by word into the chat store.
- */
-
 import { useRef, useCallback } from "react";
 import { chatStore } from "../store/chat_state_store";
+
+const CHUNK_SIZE = 4; // kata per kemunculan
 
 export function useStreamResponse() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /**
-   * Start streaming a response.
-   * @param fullText - the complete text to stream.
-   * @param messageId - the ID of the assistant message to update.
-   * @param onDone - called when streaming finishes.
-   */
   const startStream = useCallback(
     (fullText: string, messageId: string, onDone: () => void) => {
-      // Clear any existing stream
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
 
       const words = fullText.split(" ");
-      let index = 0;
+      const chunks: string[] = [];
+      for (let i = 0; i < words.length; i += CHUNK_SIZE) {
+        chunks.push(words.slice(i, i + CHUNK_SIZE).join(" "));
+      }
 
-      // Add empty placeholder to store first
+      let index = 0;
       chatStore.updateMessageContent(messageId, "");
 
       timerRef.current = setInterval(() => {
         index++;
-        if (index <= words.length) {
-          const partial = words.slice(0, index).join(" ");
+        if (index <= chunks.length) {
+          const partial = chunks.slice(0, index).join(" ");
           chatStore.updateMessageContent(messageId, partial);
         } else {
-          // Finish
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
-          chatStore.setLoading(false);   // end loading
           onDone();
         }
-      }, 80); // 80ms per word – a bit slower, feels natural
+      }, 200); // lebih lambat, 200ms per chunk
     },
     []
   );

@@ -119,12 +119,17 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   onRegenerateMessage,
   editingMessageId,
 }) => {
+  const [streamingAiId, setStreamingAiId] = useState<string | null>(
+    chatStore.getState().streamingAiId
+  );
+
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shrinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef<boolean>(false);
   const longPressTargetRef = useRef<string | null>(null);
 
@@ -150,9 +155,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, []);
 
   useEffect(() => {
-    const unsubscribe = chatStore.subscribe(() =>
-      setMessages([...chatStore.getState().messages])
-    );
+    const unsubscribe = chatStore.subscribe(() => {
+      setMessages([...chatStore.getState().messages]);
+      setStreamingAiId(chatStore.getState().streamingAiId);
+    });
     return () => {
       unsubscribe();
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
@@ -188,8 +194,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, [mergedMessages, editingMessageId]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mergedMessages]);
+    const behavior: ScrollBehavior = isLoading ? "auto" : "smooth";
+    bottomRef.current?.scrollIntoView({ behavior });
+  }, [mergedMessages, isLoading]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
@@ -291,12 +298,22 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setHasBoardAppeared(false);
   };
 
+  // Long press AI: shrink setelah 200ms, sheet setelah 500ms
   const startAiLongPress = useCallback((msgId: string, content: string) => {
     longPressTargetRef.current = msgId;
     longPressFiredRef.current = false;
-    setPressedAiId(msgId);
+
+    if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    shrinkTimerRef.current = setTimeout(() => {
+      if (longPressTargetRef.current === msgId && !longPressFiredRef.current) {
+        setPressedAiId(msgId);
+      }
+    }, 200);
+
     longPressTimerRef.current = setTimeout(() => {
+      if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
       if (longPressTargetRef.current === msgId) {
         longPressFiredRef.current = true;
         setPressedAiId(null);
@@ -306,6 +323,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, []);
 
   const endAiLongPress = useCallback(() => {
+    if (shrinkTimerRef.current) {
+      clearTimeout(shrinkTimerRef.current);
+      shrinkTimerRef.current = null;
+    }
     if (!longPressFiredRef.current) {
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
@@ -317,15 +338,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, []);
 
   const showScrollButton = !isAtBottom && !isScrolling;
-
-  const lastAssistantMessageId = useMemo(() => {
-    for (let i = mergedMessages.length - 1; i >= 0; i--) {
-      if (mergedMessages[i].role === "assistant" && !mergedMessages[i].id.endsWith("_stopped")) {
-        return mergedMessages[i].id;
-      }
-    }
-    return null;
-  }, [mergedMessages]);
 
   const boardActiveScale = isBoardPressed ? 0.92 : (isDraggingBoard ? 0.95 : 1);
 
@@ -347,9 +359,23 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     }
   }, [isDraggingBoard, isBoardPressed]);
 
-  const chatFont = "'Nunito', sans-serif";
-  const chatFontSize = 22;
-  const chatFontWeight = 900;
+  const chatFont = "'Literata', serif";
+  const chatFontWeight = 700;
+  const chatFontSize = 24;
+  const chatLineHeight = 1.45;
+  const chatLetterSpacing = "-0.02em";
+  const chatBg = "#fdf6f0";
+
+  const prevChunkCountRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    mergedMessages.forEach((msg) => {
+      if (msg.role === "assistant") {
+        const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
+        const words = cleanContent.split(" ");
+        prevChunkCountRef.current[msg.id] = Math.ceil(words.length / 4);
+      }
+    });
+  }, [mergedMessages]);
 
   return (
     <div
@@ -358,7 +384,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         flex: 1,
         overflowY: "auto",
         padding: "60px 16px 110px",
-        backgroundColor: "#fafafa",
+        backgroundColor: chatBg,
         position: "relative",
         overscrollBehavior: "contain",
       }}
@@ -397,6 +423,14 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
             -webkit-backdrop-filter: blur(24px);
           }
         }
+        @keyframes fadeInChunk {
+          0% { opacity: 0; transform: translateY(3px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes blinkCursor {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
       `}</style>
 
       {actionBoardId && (
@@ -425,7 +459,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           textAlign: "center",
         }}>
           <HydraIcon size={48} />
-          <p style={{ marginTop: 12, color: "#1a1a1a", fontFamily: chatFont, fontSize: chatFontSize, fontWeight: chatFontWeight }}>
+          <p style={{ marginTop: 12, color: "#1a1a1a", fontFamily: chatFont, fontSize: chatFontSize, fontWeight: chatFontWeight, lineHeight: chatLineHeight, letterSpacing: chatLetterSpacing }}>
             Kirim pesan untuk memulai
           </p>
         </div>
@@ -462,12 +496,21 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         if (msg.role === "assistant") {
           const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
           const isCopied = copiedId === msg.id;
-          const isStreamingThis = isLoading && msg.id === lastAssistantMessageId;
+          const isStreamingThis = msg.id === streamingAiId;
           const isSpinningRegen = spinningRegenerateId === msg.id;
           const isPressed = pressedAiId === msg.id;
 
           const prevMsg = mergedMessages[idx - 1];
           const userText = prevMsg?.role === "user" ? prevMsg.content : "";
+
+          const words = cleanContent.split(" ");
+          const chunkSize = 4;
+          const chunks: string[] = [];
+          for (let i = 0; i < words.length; i += chunkSize) {
+            chunks.push(words.slice(i, i + chunkSize).join(" "));
+          }
+
+          const prevChunkCount = prevChunkCountRef.current[msg.id] || 0;
 
           return (
             <div key={msg.id} style={{
@@ -499,7 +542,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   fontFamily: chatFont,
                   fontSize: chatFontSize,
                   fontWeight: chatFontWeight,
-                  lineHeight: 1.5,
+                  lineHeight: chatLineHeight,
+                  letterSpacing: chatLetterSpacing,
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
                   cursor: isStreamingThis ? "default" : "pointer",
@@ -509,7 +553,28 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   WebkitUserSelect: "none",
                 }}
               >
-                {cleanContent}
+                {chunks.map((chunk, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      animation: i >= prevChunkCount ? "fadeInChunk 0.25s ease forwards" : "none",
+                      display: "inline",
+                    }}
+                  >
+                    {chunk}{" "}
+                  </span>
+                ))}
+                {isStreamingThis && (
+                  <span style={{
+                    display: "inline-block",
+                    width: 2,
+                    height: "0.9em",
+                    backgroundColor: "#1a1a1a",
+                    marginLeft: 2,
+                    verticalAlign: "text-bottom",
+                    animation: "blinkCursor 0.7s step-end infinite",
+                  }} />
+                )}
               </div>
 
               {cleanContent && !isStreamingThis && (
@@ -663,7 +728,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   fontFamily: chatFont,
                   fontSize: chatFontSize,
                   fontWeight: chatFontWeight,
-                  lineHeight: 1.5,
+                  lineHeight: chatLineHeight,
+                  letterSpacing: chatLetterSpacing,
                   whiteSpace: "normal",
                   overflowWrap: "break-word",
                   border: "1px solid rgba(255,255,255,0.5)",
