@@ -9,19 +9,53 @@ export type Message = {
 type ChatState = {
   messages: Message[];
   isLoading: boolean;
-  streamingAiId: string | null;   // ID pesan AI yang sedang streaming
+  streamingAiId: string | null;
+  currentInput: string;
 };
 
 type Listener = () => void;
 
+const STORAGE_KEY = "hydra_chat_state";
+
 class ChatStore {
-  private state: ChatState = {
-    messages: [],
-    isLoading: false,
-    streamingAiId: null,
-  };
+  private state: ChatState = this.loadState();
 
   private listeners: Listener[] = [];
+
+  private loadState(): ChatState {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          messages: parsed.messages || [],
+          isLoading: false,           // jangan simpan isLoading = true
+          streamingAiId: null,
+          currentInput: parsed.currentInput || "",
+        };
+      }
+    } catch {
+      // fallback
+    }
+    return {
+      messages: [],
+      isLoading: false,
+      streamingAiId: null,
+      currentInput: "",
+    };
+  }
+
+  private saveState() {
+    try {
+      const toSave = {
+        messages: this.state.messages,
+        currentInput: this.state.currentInput,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch {
+      // ignore
+    }
+  }
 
   getState(): ChatState {
     return this.state;
@@ -36,6 +70,7 @@ class ChatStore {
 
   private emit() {
     this.listeners.forEach((listener) => listener());
+    this.saveState();       // simpan setiap ada perubahan
   }
 
   addMessage(message: Message) {
@@ -57,7 +92,7 @@ class ChatStore {
   }
 
   clearMessages() {
-    this.state = { ...this.state, messages: [] };
+    this.state = { ...this.state, messages: [], currentInput: "" };
     this.emit();
   }
 
@@ -81,9 +116,13 @@ class ChatStore {
     this.emit();
   }
 
-  // ** Baru **
   setStreamingAiId(id: string | null) {
     this.state = { ...this.state, streamingAiId: id };
+    this.emit();
+  }
+
+  setCurrentInput(text: string) {
+    this.state = { ...this.state, currentInput: text };
     this.emit();
   }
 }

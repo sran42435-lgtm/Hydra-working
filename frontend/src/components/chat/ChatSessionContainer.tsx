@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useCallback } from "react";
 import { chatStore } from "../../store/chat_state_store";
 import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
@@ -11,18 +11,17 @@ interface ChatSessionContainerProps {
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { isLoading } = useChatStore();
+  const { isLoading, currentInput } = useChatStore();   // baca currentInput dari store
   const { startStream, stopStream } = useStreamResponse();
 
-  const [inputText, setInputText] = useState("");
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const lastUserMessageRef = useRef<string>("");
+  const editingMessageIdRef = useRef<string | null>(null);
+  const streamingAiIdRef = useRef<string | null>(null);
 
   const sendToAi = useCallback(async (text: string) => {
     chatStore.setLoading(true);
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
     try {
       const res = await fetch("/api/v1/chat", {
         method: "POST",
@@ -32,17 +31,17 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       });
       const data = await res.json();
       const aiText = data.response || "(tidak ada balasan)";
-
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
-      // ** Tandai bahwa pesan ini sedang streaming **
+      streamingAiIdRef.current = aiMessageId;
       chatStore.setStreamingAiId(aiMessageId);
-
       startStream(aiText, aiMessageId, () => {
-        chatStore.setStreamingAiId(null);  // streaming selesai
+        streamingAiIdRef.current = null;
+        chatStore.setStreamingAiId(null);
         chatStore.setLoading(false);
       });
     } catch (err: unknown) {
+      streamingAiIdRef.current = null;
       chatStore.setStreamingAiId(null);
       if (err instanceof DOMException && err.name === "AbortError") {
         // stop pressed
@@ -61,15 +60,15 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
 
   const handleSend = useCallback(async (text: string) => {
     lastUserMessageRef.current = text;
-    if (editingMessageId) {
-      chatStore.removeFrom(editingMessageId);
-      setEditingMessageId(null);
+    if (editingMessageIdRef.current) {
+      chatStore.removeFrom(editingMessageIdRef.current);
+      editingMessageIdRef.current = null;
     }
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
+    chatStore.setCurrentInput("");   // kosongkan input setelah kirim
     await sendToAi(text);
-    setInputText("");
-  }, [editingMessageId, sendToAi]);
+  }, [sendToAi]);
 
   const handleStop = () => {
     if (abortControllerRef.current) {
@@ -77,14 +76,14 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       abortControllerRef.current = null;
     }
     stopStream();
-    setEditingMessageId(null);
+    editingMessageIdRef.current = null;
 
     chatStore.setStreamingAiId(null);
 
-    // Hapus pesan AI yang sedang streaming (jika ada)
     const streamingId = chatStore.getState().streamingAiId;
     if (streamingId) {
       chatStore.removeFrom(streamingId);
+      streamingAiIdRef.current = null;
     }
 
     chatStore.addMessage({
@@ -93,7 +92,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       content: "pesan telah dihentikan",
     });
 
-    setInputText("");
+    // Jangan hapus input, biarkan tetap apa adanya
     chatStore.setLoading(false);
   };
 
@@ -114,20 +113,20 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   }, [sendToAi]);
 
   const handleEditMessage = useCallback((text: string, messageId: string) => {
-    setEditingMessageId(messageId);
-    setInputText(text);
+    editingMessageIdRef.current = messageId;
+    chatStore.setCurrentInput(text);
   }, []);
 
   const handleCancelEdit = useCallback(() => {
-    setEditingMessageId(null);
-    setInputText("");
+    editingMessageIdRef.current = null;
+    chatStore.setCurrentInput("");
   }, []);
 
   const handleTextChange = useCallback((text: string) => {
-    setInputText(text);
+    chatStore.setCurrentInput(text);
   }, []);
 
-  const isEditing = editingMessageId !== null;
+  const isEditing = editingMessageIdRef.current !== null;
 
   return (
     <div style={{
@@ -143,7 +142,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         onEditMessage={handleEditMessage}
         onRetryMessage={handleRetry}
         onRegenerateMessage={handleRegenerate}
-        editingMessageId={editingMessageId}
+        editingMessageId={editingMessageIdRef.current}
       />
       <div style={{
         position: "fixed",
@@ -162,7 +161,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
           margin: "0 auto",
         }}>
           <ChatInputBar
-            text={inputText}
+            text={currentInput || ""}
             onTextChange={handleTextChange}
             onSend={handleSend}
             onStop={handleStop}

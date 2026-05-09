@@ -3,6 +3,7 @@ import { chatStore, Message } from "../../store/chat_state_store";
 import { HydraIcon } from "../ui/HydraIcon";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { AIMessageSheet } from "./AIMessageSheet";
+import { MessageBubbleView } from "./MessageBubbleView";
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -298,7 +299,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setHasBoardAppeared(false);
   };
 
-  // Long press AI: shrink setelah 200ms, sheet setelah 500ms
   const startAiLongPress = useCallback((msgId: string, content: string) => {
     longPressTargetRef.current = msgId;
     longPressFiredRef.current = false;
@@ -664,6 +664,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           );
         }
 
+        // ========== USER MESSAGE ==========
         const isActionOpen = actionBoardId === msg.id;
         const isSpinning = spinningRetryId === msg.id;
 
@@ -676,11 +677,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
             alignItems: "stretch",
             position: "relative",
           }}>
+            {/* Baris: retry + bubble */}
             <div style={{
               display: "flex",
               justifyContent: "flex-end",
               alignItems: "center",
               gap: 8,
+              width: "100%",
             }}>
               {isFollowedByStop && (
                 <button
@@ -708,6 +711,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 </button>
               )}
 
+              {/* Wrapper bubble dengan batas lebar */}
               <div
                 onClick={(e) => {
                   e.stopPropagation();
@@ -716,34 +720,15 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 onContextMenu={(e) => e.preventDefault()}
                 style={{
                   maxWidth: "75%",
-                  minWidth: 0,
-                  padding: "12px 18px",
-                  borderRadius: 20,
-                  backgroundColor: "rgba(224,123,90,0.75)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  color: "#fff",
-                  borderTopRightRadius: 4,
-                  borderTopLeftRadius: 20,
-                  fontFamily: chatFont,
-                  fontSize: chatFontSize,
-                  fontWeight: chatFontWeight,
-                  lineHeight: chatLineHeight,
-                  letterSpacing: chatLetterSpacing,
-                  whiteSpace: "normal",
-                  overflowWrap: "break-word",
-                  border: "1px solid rgba(255,255,255,0.5)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                   cursor: "pointer",
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
-                  touchAction: "manipulation",
+                  flexShrink: 0,
                 }}
               >
-                {msg.content}
+                <MessageBubbleView content={msg.content} isUser />
               </div>
             </div>
 
+            {/* Action board */}
             {isActionOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}

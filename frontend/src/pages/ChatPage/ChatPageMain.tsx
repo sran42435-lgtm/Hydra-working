@@ -136,7 +136,6 @@ export const ChatPageMain: React.FC = () => {
             const opening = !sidebarOpen;
             setSidebarOpen(opening);
             if (opening) {
-              // Dispatch event so the action board closes
               document.dispatchEvent(new CustomEvent("closeActionBoard"));
             }
           }}
@@ -197,6 +196,7 @@ export const ChatPageMain: React.FC = () => {
         />
       </div>
       
+      {/* Area chat utama – TANPA key, agar tidak unmount saat isMobile berubah */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         <ChatSessionContainer isDesktop={!isMobile} />
       </div>

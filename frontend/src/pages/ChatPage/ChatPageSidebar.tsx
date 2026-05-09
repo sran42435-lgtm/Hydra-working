@@ -76,9 +76,9 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(255, 255, 255, 0.75)",
-        backdropFilter: "blur(150px)",
-        WebkitBackdropFilter: "blur(150px)",
+        backgroundColor: isMobile ? "rgba(255, 255, 255, 0.75)" : "#fdf6f0",
+        backdropFilter: isMobile ? "blur(150px)" : "none",
+        WebkitBackdropFilter: isMobile ? "blur(150px)" : "none",
         padding: "16px",
         paddingLeft: 16 + extraPadding,
         display: "flex",
@@ -137,37 +137,37 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
         <p style={{ fontSize: 12, color: "#999", fontFamily: sidebarFont }}>Phase 1</p>
       </div>
 
-      <button
-        onClick={onNewChat}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          width: "100%",
-          padding: "8px 0",
-          border: "none",
-          backgroundColor: "transparent",
-          color: "#E07B5A",
-          fontSize: 15,
-          fontWeight: 700,
-          fontFamily: sidebarFont,
-          cursor: "pointer",
-          textAlign: "left",
-          marginBottom: 16,
-        }}
-      >
-        <NewChatIcon />
-        <span>Chat Baru</span>
-      </button>
+      {/* Tombol Chat Baru – hanya area konten yang bisa diklik */}
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={onNewChat}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            width: "fit-content",
+            padding: "8px 0",
+            border: "none",
+            backgroundColor: "transparent",
+            color: "#E07B5A",
+            fontSize: 15,
+            fontWeight: 700,
+            fontFamily: sidebarFont,
+            cursor: "pointer",
+          }}
+        >
+          <NewChatIcon />
+          <span>Chat Baru</span>
+        </button>
+      </div>
 
       <div style={{
         width: "100%",
         height: 1,
         backgroundColor: "rgba(0,0,0,0.05)",
-        marginBottom: 16,
       }} />
 
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div style={{ flex: 1, overflowY: "auto", marginTop: 16 }}>
         <p style={{ fontSize: 12, color: "#999", fontWeight: 600, fontFamily: sidebarFont, marginBottom: 8 }}>Riwayat (Phase 2)</p>
         {history.map((item, index) => (
           <div
