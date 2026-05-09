@@ -4,10 +4,10 @@ import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer
 import { chatStore } from "../../store/chat_state_store";
 
 const HamburgerIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-    <line x1="3" y1="6" x2="21" y2="6" />
-    <line x1="3" y1="12" x2="21" y2="12" />
-    <line x1="3" y1="18" x2="21" y2="18" />
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <line x1="3" y1="6"  x2="21" y2="6" />    {/* atas, penuh */}
+    <line x1="3" y1="12" x2="12" y2="12" />   {/* tengah, pendek mulai kiri */}
+    <line x1="3" y1="18" x2="21" y2="18" />   {/* bawah, penuh */}
   </svg>
 );
 
@@ -109,7 +109,7 @@ export const ChatPageMain: React.FC = () => {
   const floatingBtnBase: React.CSSProperties = {
     position: "fixed",
     zIndex: 5,
-    background: "rgba(255,255,255,0.6)",
+    background: "#fdf6f0",   // warna sama dengan halaman chat
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     border: "1px solid rgba(0,0,0,0.04)",

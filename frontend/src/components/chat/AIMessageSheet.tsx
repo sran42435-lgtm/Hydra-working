@@ -163,7 +163,7 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
           left: sidebarWidth,
           right: 0,
           height: "90vh",
-          backgroundColor: "rgba(255,255,255,0.75)",
+          backgroundColor: "#fdf6f0",         // warna sama dengan halaman chat
           backdropFilter: "blur(30px)",
           WebkitBackdropFilter: "blur(30px)",
           borderTopLeftRadius: 36,
@@ -197,7 +197,7 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
             width: 40,
             height: 5,
             borderRadius: 3,
-            backgroundColor: "rgba(120, 113, 108, 0.42)",
+            backgroundColor: "rgba(59, 130, 246, 0.6)",
           }} />
         </div>
         <div
