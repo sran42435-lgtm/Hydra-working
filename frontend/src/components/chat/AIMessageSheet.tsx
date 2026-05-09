@@ -197,7 +197,7 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
             width: 40,
             height: 5,
             borderRadius: 3,
-            backgroundColor: "rgba(59, 130, 246, 0.6)",
+            backgroundColor: "rgba(120, 113, 108, 0.42)",
           }} />
         </div>
         <div

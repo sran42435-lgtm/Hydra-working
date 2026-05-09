@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { chatStore } from "../../store/chat_state_store";
 import { useChatStore } from "./useChatStore";
 import { ChatInputBar } from "./ChatInputBar";
@@ -11,12 +11,33 @@ interface ChatSessionContainerProps {
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDesktop = false }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
-  const { isLoading, currentInput } = useChatStore();   // baca currentInput dari store
+  const { isLoading, currentInput } = useChatStore();
   const { startStream, stopStream } = useStreamResponse();
 
+  const [keyboardHeight, setKeyboardHeight] = useState(0);   // tinggi keyboard di mobile
   const lastUserMessageRef = useRef<string>("");
   const editingMessageIdRef = useRef<string | null>(null);
   const streamingAiIdRef = useRef<string | null>(null);
+
+  // Deteksi keyboard pada mobile
+  useEffect(() => {
+    if (isDesktop || !window.visualViewport) return;
+
+    const handleViewportResize = () => {
+      const viewport = window.visualViewport!;
+      const windowHeight = window.innerHeight;
+      const raw = windowHeight - viewport.height;
+      // ambil 85% supaya input bar dekat dengan keyboard, tapi tidak terlalu mentok
+      setKeyboardHeight(raw > 0 ? raw * 0.01 : 0);
+    };
+
+    window.visualViewport.addEventListener("resize", handleViewportResize);
+    window.visualViewport.addEventListener("scroll", handleViewportResize);
+    return () => {
+      window.visualViewport.removeEventListener("resize", handleViewportResize);
+      window.visualViewport.removeEventListener("scroll", handleViewportResize);
+    };
+  }, [isDesktop]);
 
   const sendToAi = useCallback(async (text: string) => {
     chatStore.setLoading(true);
@@ -43,9 +64,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     } catch (err: unknown) {
       streamingAiIdRef.current = null;
       chatStore.setStreamingAiId(null);
-      if (err instanceof DOMException && err.name === "AbortError") {
-        // stop pressed
-      } else {
+      if (err instanceof DOMException && err.name === "AbortError") { /* stop */ } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
           role: "assistant",
@@ -66,43 +85,29 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     }
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
-    chatStore.setCurrentInput("");   // kosongkan input setelah kirim
+    chatStore.setCurrentInput("");
     await sendToAi(text);
   }, [sendToAi]);
 
   const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+    if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null; }
     stopStream();
     editingMessageIdRef.current = null;
-
     chatStore.setStreamingAiId(null);
-
     const streamingId = chatStore.getState().streamingAiId;
-    if (streamingId) {
-      chatStore.removeFrom(streamingId);
-      streamingAiIdRef.current = null;
-    }
-
+    if (streamingId) { chatStore.removeFrom(streamingId); streamingAiIdRef.current = null; }
     chatStore.addMessage({
       id: Date.now().toString() + "_stopped",
       role: "assistant",
       content: "pesan telah dihentikan",
     });
-
-    // Jangan hapus input, biarkan tetap apa adanya
     chatStore.setLoading(false);
   };
 
   const handleRetry = useCallback(async (text: string) => {
     const messages = chatStore.getState().messages;
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        chatStore.removeFrom(messages[i].id);
-        break;
-      }
+      if (messages[i].role === "user") { chatStore.removeFrom(messages[i].id); break; }
     }
     await handleSend(text);
   }, [handleSend]);
@@ -136,6 +141,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       backgroundColor: "transparent",
       position: "relative",
     }}>
+      {/* Daftar pesan – padding bawah ditambah saat keyboard muncul agar konten tidak tertutup */}
       <MessageListView
         isLoading={isLoading}
         isDesktop={isDesktop}
@@ -143,16 +149,19 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         onRetryMessage={handleRetry}
         onRegenerateMessage={handleRegenerate}
         editingMessageId={editingMessageIdRef.current}
+        extraBottomPadding={keyboardHeight}   // ← props baru
       />
+
+      {/* Input bar – menempel di atas keyboard */}
       <div style={{
         position: "fixed",
-        bottom: 0,
+        bottom: keyboardHeight,               // naik setinggi keyboard
         left: 0,
         right: 0,
         zIndex: 5,
         pointerEvents: "none",
         paddingLeft: isDesktop ? "260px" : "0",
-        transition: "padding-left 0.3s ease",
+        transition: isDesktop ? "padding-left 0.3s ease" : "bottom 0.1s ease-out",
         backgroundColor: "transparent",
       }}>
         <div style={{

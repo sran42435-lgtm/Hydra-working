@@ -8,6 +8,7 @@ import { MessageBubbleView } from "./MessageBubbleView";
 interface MessageListViewProps {
   isLoading: boolean;
   isDesktop?: boolean;
+  extraBottomPadding?: number;
   onEditMessage?: (text: string, messageId: string) => void;
   onRetryMessage?: (text: string) => void;
   onRegenerateMessage?: (userText: string, aiMessageId: string) => void;
@@ -115,6 +116,7 @@ function useSlowDrag(initialX: number, initialY: number) {
 export const MessageListView: React.FC<MessageListViewProps> = ({
   isLoading,
   isDesktop = false,
+  extraBottomPadding = 0,
   onEditMessage,
   onRetryMessage,
   onRegenerateMessage,
@@ -383,7 +385,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       style={{
         flex: 1,
         overflowY: "auto",
-        padding: "60px 16px 110px",
+        padding: `60px 16px ${110 + extraBottomPadding}px`,
         backgroundColor: chatBg,
         position: "relative",
         overscrollBehavior: "contain",
@@ -677,7 +679,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
             alignItems: "stretch",
             position: "relative",
           }}>
-            {/* Baris: retry + bubble */}
             <div style={{
               display: "flex",
               justifyContent: "flex-end",
@@ -711,7 +712,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 </button>
               )}
 
-              {/* Wrapper bubble dengan batas lebar */}
               <div
                 onClick={(e) => {
                   e.stopPropagation();
@@ -728,7 +728,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               </div>
             </div>
 
-            {/* Action board */}
             {isActionOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}

@@ -106,7 +106,7 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
             transform: "translateY(-50%)",
             width: "6px",
             height: "80px",
-            backgroundColor: "rgba(59, 130, 246, 0.6)",
+            backgroundColor: "rgba(120, 113, 108, 0.42)",
             borderRadius: "4px",
             cursor: "ew-resize",
             touchAction: "none",
