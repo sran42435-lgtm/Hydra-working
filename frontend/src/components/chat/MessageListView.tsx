@@ -22,7 +22,6 @@ interface MessageListViewProps {
   editingMessageId?: string | null;
 }
 
-// Ikon scroll button baru (panah bawah)
 const ScrollDownIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 5v14" />
@@ -420,7 +419,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const chatLetterSpacing = "-0.02em";
   const chatBg = "#fdf6f0";
 
-  // Warna latar disamakan dengan halaman chat
   const SCROLL_BUTTON_STYLE: React.CSSProperties = {
     position: "sticky",
     bottom: 16,
@@ -986,6 +984,46 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 >
                   <span>Edit</span>
                   <PencilLineIcon />
+                </button>
+
+                {/* Divider untuk Retry */}
+                <div style={{
+                  height: 1,
+                  backgroundColor: "rgba(0,0,0,0.05)",
+                  margin: "2px 0",
+                }} />
+
+                {/* Tombol Retry */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRetry(msg.content, msg.id);
+                  }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    color: "#1a1a1a",
+                    fontFamily: chatFont,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "background-color 0.1s ease",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
+                >
+                  <span>Retry</span>
+                  <RetryIcon />
                 </button>
               </div>
             )}
