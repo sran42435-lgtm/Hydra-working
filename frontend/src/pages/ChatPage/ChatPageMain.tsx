@@ -4,10 +4,10 @@ import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer
 import { chatStore } from "../../store/chat_state_store";
 
 const HamburgerIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="3" y1="6"  x2="21" y2="6" />    {/* atas, penuh */}
-    <line x1="3" y1="12" x2="12" y2="12" />   {/* tengah, pendek mulai kiri */}
-    <line x1="3" y1="18" x2="21" y2="18" />   {/* bawah, penuh */}
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+    <line x1="3" y1="6"  x2="21" y2="6" />
+    <line x1="3" y1="12" x2="12" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
 
@@ -17,7 +17,7 @@ const NewChatIcon = () => (
   </svg>
 );
 
-const MAX_DRAG_RIGHT = 30;
+const MAX_DRAG_RIGHT = 0;
 const MAX_DRAG_LEFT = -260;
 const CLOSE_THRESHOLD = -100;
 
@@ -27,6 +27,8 @@ export const ChatPageMain: React.FC = () => {
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const [pressedBtn, setPressedBtn] = useState<string | null>(null);
 
@@ -52,13 +54,25 @@ export const ChatPageMain: React.FC = () => {
   }, []);
 
   const handleDragMove = useCallback((currentClientX: number) => {
+    if (!isDragging) return;
     const diff = currentClientX - dragStartX.current;
     const clamped = Math.min(MAX_DRAG_RIGHT, Math.max(MAX_DRAG_LEFT, diff));
-    setDragOffset(clamped);
-  }, []);
+    
+    // Gunakan RAF untuk update langsung ke DOM (lebih responsif)
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    rafRef.current = requestAnimationFrame(() => {
+      setDragOffset(clamped);
+    });
+  }, [isDragging]);
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     setDragOffset((currentOffset) => {
       if (currentOffset < CLOSE_THRESHOLD) {
         setSidebarOpen(false);
@@ -78,24 +92,27 @@ export const ChatPageMain: React.FC = () => {
       top: 0,
       bottom: 0,
       zIndex: 20,
-      transition: isDragging ? "none" : "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-      willChange: "transform, width",
+      willChange: "transform",
       overflow: "hidden",
     };
 
-    if (isMobile && !sidebarOpen) {
-      return { ...base, width: 260, transform: "translateX(-100%)" };
-    }
-
-    if (isDragging) {
-      if (dragOffset > 0) {
-        return { ...base, width: 260 + dragOffset, transform: "translateX(0)" };
+    if (isMobile) {
+      base.width = "100vw";
+      // **PENTING: tanpa transisi saat drag**
+      if (isDragging) {
+        base.transform = `translateX(${dragOffset}px)`;
+        base.transition = "none";
       } else {
-        return { ...base, width: 260, transform: `translateX(${dragOffset}px)` };
+        base.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+        base.transform = sidebarOpen ? "translateX(0)" : "translateX(-100%)";
       }
+    } else {
+      base.width = 260;
+      base.transform = "translateX(0)";
+      base.transition = "none";
     }
 
-    return { ...base, width: 260, transform: "translateX(0)" };
+    return base;
   };
 
   const getPressStyle = (buttonId: string): React.CSSProperties => {
@@ -109,7 +126,7 @@ export const ChatPageMain: React.FC = () => {
   const floatingBtnBase: React.CSSProperties = {
     position: "fixed",
     zIndex: 5,
-    background: "#fdf6f0",   // warna sama dengan halaman chat
+    background: "#fdf6f0",
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     border: "1px solid rgba(0,0,0,0.04)",
@@ -196,7 +213,6 @@ export const ChatPageMain: React.FC = () => {
         />
       </div>
       
-      {/* Area chat utama – TANPA key, agar tidak unmount saat isMobile berubah */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         <ChatSessionContainer isDesktop={!isMobile} />
       </div>
