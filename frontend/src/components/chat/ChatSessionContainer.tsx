@@ -1,67 +1,43 @@
-import React, {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
-
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { chatStore } from "../../store/chat_state_store";
-
 import { useChatStore } from "./useChatStore";
-
 import { ChatInputBar } from "./ChatInputBar";
-
 import { MessageListView } from "./MessageListView";
-
 import { useStreamResponse } from "../../hooks/useStreamResponse";
 
 interface ChatSessionContainerProps {
   isDesktop?: boolean;
 }
 
-export const ChatSessionContainer: React.FC<
-  ChatSessionContainerProps
-> = ({ isDesktop = false }) => {
-  const abortControllerRef =
-    useRef<AbortController | null>(null);
+export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
+  isDesktop = false,
+}) => {
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { isLoading, currentInput } =
-    useChatStore();
+  const { isLoading, currentInput } = useChatStore();
 
-  const { startStream, stopStream } =
-    useStreamResponse();
+  const { startStream, stopStream } = useStreamResponse();
 
-  const [keyboardHeight, setKeyboardHeight] =
-    useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  const lastUserMessageRef =
-    useRef<string>("");
+  const lastUserMessageRef = useRef<string>("");
 
-  const editingMessageIdRef = useRef<
-    string | null
-  >(null);
+  const editingMessageIdRef = useRef<string | null>(null);
 
-  const streamingAiIdRef = useRef<
-    string | null
-  >(null);
+  const streamingAiIdRef = useRef<string | null>(null);
 
   const aiMessageAddedRef = useRef(false);
 
   useEffect(() => {
-    if (isDesktop || !window.visualViewport)
-      return;
+    if (isDesktop || !window.visualViewport) return;
 
     const handleViewportResize = () => {
       const viewport = window.visualViewport!;
-
       const windowHeight = window.innerHeight;
 
-      const raw =
-        windowHeight - viewport.height;
+      const raw = windowHeight - viewport.height;
 
-      setKeyboardHeight(
-        raw > 0 ? raw * 0.01 : 0
-      );
+      setKeyboardHeight(raw > 0 ? raw * 0.01 : 0);
     };
 
     window.visualViewport.addEventListener(
@@ -87,45 +63,60 @@ export const ChatSessionContainer: React.FC<
     };
   }, [isDesktop]);
 
+  const cleanupStoppedConversations = useCallback(() => {
+    const messages = chatStore.getState().messages;
+
+    const cleaned: typeof messages = [];
+
+    for (let i = 0; i < messages.length; i++) {
+      const current = messages[i];
+      const next = messages[i + 1];
+
+      const isStoppedPair =
+        current.role === "user" &&
+        next &&
+        next.id.endsWith("_stopped");
+
+      if (isStoppedPair) {
+        i++;
+        continue;
+      }
+
+      cleaned.push(current);
+    }
+
+    chatStore.setMessages(cleaned);
+  }, []);
+
   const sendToAi = useCallback(
     async (text: string) => {
       chatStore.setLoading(true);
 
       aiMessageAddedRef.current = false;
 
-      const controller =
-        new AbortController();
+      const controller = new AbortController();
 
-      abortControllerRef.current =
-        controller;
+      abortControllerRef.current = controller;
 
       try {
-        const res = await fetch(
-          "/api/v1/chat",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              message: text,
-            }),
-            signal: controller.signal,
-          }
-        );
+        const res = await fetch("/api/v1/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: text,
+          }),
+          signal: controller.signal,
+        });
 
         const data = await res.json();
 
-        const aiText =
-          data.response ||
-          "(tidak ada balasan)";
+        cleanupStoppedConversations();
 
-        // ✅ Bersihkan semua percakapan stop lama
-        chatStore.cleanupStoppedConversations();
+        const aiText = data.response || "(tidak ada balasan)";
 
-        const aiMessageId =
-          Date.now().toString() + "_ai";
+        const aiMessageId = Date.now().toString() + "_ai";
 
         chatStore.addMessage({
           id: aiMessageId,
@@ -135,45 +126,28 @@ export const ChatSessionContainer: React.FC<
 
         aiMessageAddedRef.current = true;
 
-        streamingAiIdRef.current =
-          aiMessageId;
+        streamingAiIdRef.current = aiMessageId;
 
-        chatStore.setStreamingAiId(
-          aiMessageId
-        );
+        chatStore.setStreamingAiId(aiMessageId);
 
-        startStream(
-          aiText,
-          aiMessageId,
-          () => {
-            streamingAiIdRef.current =
-              null;
+        startStream(aiText, aiMessageId, () => {
+          streamingAiIdRef.current = null;
 
-            chatStore.setStreamingAiId(
-              null
-            );
+          chatStore.setStreamingAiId(null);
 
-            chatStore.setLoading(false);
-          }
-        );
+          chatStore.setLoading(false);
+        });
       } catch (err: unknown) {
         streamingAiIdRef.current = null;
 
         chatStore.setStreamingAiId(null);
 
-        if (
-          err instanceof DOMException &&
-          err.name === "AbortError"
-        ) {
-          // stop ditekan
+        if (err instanceof DOMException && err.name === "AbortError") {
         } else {
           chatStore.addMessage({
-            id:
-              Date.now().toString() +
-              "_err",
+            id: Date.now().toString() + "_err",
             role: "assistant",
-            content:
-              "Error: " + String(err),
+            content: "Error: " + String(err),
           });
 
           chatStore.setLoading(false);
@@ -182,7 +156,7 @@ export const ChatSessionContainer: React.FC<
         abortControllerRef.current = null;
       }
     },
-    [startStream]
+    [cleanupStoppedConversations, startStream]
   );
 
   const handleSend = useCallback(
@@ -190,12 +164,9 @@ export const ChatSessionContainer: React.FC<
       lastUserMessageRef.current = text;
 
       if (editingMessageIdRef.current) {
-        chatStore.removeFrom(
-          editingMessageIdRef.current
-        );
+        chatStore.removeFrom(editingMessageIdRef.current);
 
-        editingMessageIdRef.current =
-          null;
+        editingMessageIdRef.current = null;
       }
 
       const userMessage = {
@@ -224,22 +195,20 @@ export const ChatSessionContainer: React.FC<
 
     editingMessageIdRef.current = null;
 
-    // ✅ Hapus AI streaming aktif
-    if (streamingAiIdRef.current) {
-      chatStore.removeMessage(
-        streamingAiIdRef.current
-      );
+    if (aiMessageAddedRef.current && streamingAiIdRef.current) {
+      chatStore.removeFrom(streamingAiIdRef.current);
+
+      streamingAiIdRef.current = null;
+
+      chatStore.setStreamingAiId(null);
+    } else {
+      chatStore.setStreamingAiId(null);
+
+      streamingAiIdRef.current = null;
     }
 
-    streamingAiIdRef.current = null;
-
-    chatStore.setStreamingAiId(null);
-
-    // ✅ Tambahkan marker stop
     chatStore.addMessage({
-      id:
-        Date.now().toString() +
-        "_stopped",
+      id: Date.now().toString() + "_stopped",
       role: "assistant",
       content: "pesan telah dihentikan",
     });
@@ -248,35 +217,40 @@ export const ChatSessionContainer: React.FC<
   };
 
   const handleRetry = useCallback(
-    async (text: string) => {
-      const messages =
-        chatStore.getState().messages;
+    async (text: string, retryMessageId: string) => {
+      const messages = chatStore.getState().messages;
 
-      for (
-        let i = messages.length - 1;
-        i >= 0;
-        i--
-      ) {
-        if (messages[i].role === "user") {
-          chatStore.removeFrom(
-            messages[i].id
-          );
+      const retryIndex = messages.findIndex(
+        (m) => m.id === retryMessageId
+      );
 
-          break;
-        }
-      }
+      if (retryIndex === -1) return;
 
-      await handleSend(text);
+      const preservedMessages = messages.slice(
+        0,
+        retryIndex + 1
+      );
+
+      chatStore.setMessages(preservedMessages);
+
+      await sendToAi(text);
     },
-    [handleSend]
+    [sendToAi]
   );
 
   const handleRegenerate = useCallback(
-    async (
-      userText: string,
-      aiMessageId: string
-    ) => {
-      chatStore.removeFrom(aiMessageId);
+    async (userText: string, aiMessageId: string) => {
+      const messages = chatStore.getState().messages;
+
+      const aiIndex = messages.findIndex(
+        (m) => m.id === aiMessageId
+      );
+
+      if (aiIndex === -1) return;
+
+      const preservedMessages = messages.slice(0, aiIndex);
+
+      chatStore.setMessages(preservedMessages);
 
       await sendToAi(userText);
     },
@@ -284,37 +258,25 @@ export const ChatSessionContainer: React.FC<
   );
 
   const handleEditMessage = useCallback(
-    (
-      text: string,
-      messageId: string
-    ) => {
-      editingMessageIdRef.current =
-        messageId;
+    (text: string, messageId: string) => {
+      editingMessageIdRef.current = messageId;
 
       chatStore.setCurrentInput(text);
     },
     []
   );
 
-  const handleCancelEdit = useCallback(
-    () => {
-      editingMessageIdRef.current =
-        null;
+  const handleCancelEdit = useCallback(() => {
+    editingMessageIdRef.current = null;
 
-      chatStore.setCurrentInput("");
-    },
-    []
-  );
+    chatStore.setCurrentInput("");
+  }, []);
 
-  const handleTextChange = useCallback(
-    (text: string) => {
-      chatStore.setCurrentInput(text);
-    },
-    []
-  );
+  const handleTextChange = useCallback((text: string) => {
+    chatStore.setCurrentInput(text);
+  }, []);
 
-  const isEditing =
-    editingMessageIdRef.current !== null;
+  const isEditing = editingMessageIdRef.current !== null;
 
   return (
     <div
@@ -331,15 +293,9 @@ export const ChatSessionContainer: React.FC<
         isDesktop={isDesktop}
         onEditMessage={handleEditMessage}
         onRetryMessage={handleRetry}
-        onRegenerateMessage={
-          handleRegenerate
-        }
-        editingMessageId={
-          editingMessageIdRef.current
-        }
-        extraBottomPadding={
-          keyboardHeight
-        }
+        onRegenerateMessage={handleRegenerate}
+        editingMessageId={editingMessageIdRef.current}
+        extraBottomPadding={keyboardHeight}
       />
 
       <div
@@ -350,9 +306,7 @@ export const ChatSessionContainer: React.FC<
           right: 0,
           zIndex: 5,
           pointerEvents: "none",
-          paddingLeft: isDesktop
-            ? "260px"
-            : "0",
+          paddingLeft: isDesktop ? "260px" : "0",
           transition: isDesktop
             ? "padding-left 0.3s ease"
             : "bottom 0.1s ease-out",
@@ -368,14 +322,10 @@ export const ChatSessionContainer: React.FC<
         >
           <ChatInputBar
             text={currentInput || ""}
-            onTextChange={
-              handleTextChange
-            }
+            onTextChange={handleTextChange}
             onSend={handleSend}
             onStop={handleStop}
-            onCancelEdit={
-              handleCancelEdit
-            }
+            onCancelEdit={handleCancelEdit}
             disabled={isLoading}
             isLoading={isLoading}
             isEditing={isEditing}

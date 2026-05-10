@@ -17,7 +17,7 @@ interface MessageListViewProps {
   isDesktop?: boolean;
   extraBottomPadding?: number;
   onEditMessage?: (text: string, messageId: string) => void;
-  onRetryMessage?: (text: string) => void;
+  onRetryMessage?: (text: string, messageId: string) => void;
   onRegenerateMessage?: (userText: string, aiMessageId: string) => void;
   editingMessageId?: string | null;
 }
@@ -326,12 +326,14 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   };
 
   const handleRetry = (text: string, msgId: string) => {
-    setSpinningRetryId(msgId);
-    setTimeout(() => {
-      setSpinningRetryId(null);
-      onRetryMessage?.(text);
-    }, 600);
-  };
+  setSpinningRetryId(msgId);
+
+  setTimeout(() => {
+    setSpinningRetryId(null);
+
+    onRetryMessage?.(text, msgId);
+  }, 600);
+};
 
   const handleRegenerate = (userText: string, aiMsgId: string) => {
     setSpinningRegenerateId(aiMsgId);
