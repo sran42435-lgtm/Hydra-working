@@ -20,6 +20,32 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
+  /**
+   * keyboard benar-benar terbuka
+   */
+  const keyboardOpenRef = useRef(false);
+
+  /**
+   * lock tinggi keyboard ASLI
+   * bukan adjusted height
+   */
+  const lockedRawKeyboardHeightRef = useRef(0);
+
+  /**
+   * timeout close keyboard
+   */
+  const keyboardCloseTimeoutRef = useRef<number | null>(null);
+
+  /**
+   * lock saat mengetik
+   */
+  const typingLockRef = useRef(false);
+
+  /**
+   * unlock typing
+   */
+  const typingUnlockTimeoutRef = useRef<number | null>(null);
+
   const lastUserMessageRef = useRef<string>("");
 
   const editingMessageIdRef = useRef<string | null>(null);
@@ -31,34 +57,254 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
   useEffect(() => {
     if (isDesktop || !window.visualViewport) return;
 
-    const handleViewportResize = () => {
-      const viewport = window.visualViewport!;
-      const windowHeight = window.innerHeight;
+    const viewport = window.visualViewport;
 
-      const raw = windowHeight - viewport.height;
+    let frame: number | null = null;
 
-      setKeyboardHeight(raw > 0 ? raw * 0.01 : 0);
+    /**
+     * OFFSET INPUT BAR
+     *
+     * makin besar -> input turun
+     * makin kecil -> input naik
+     */
+    const KEYBOARD_OFFSET = 250;
+
+    const getAdjustedHeight = (rawHeight: number) => {
+      return Math.max(rawHeight - KEYBOARD_OFFSET, 0);
     };
 
-    window.visualViewport.addEventListener(
+    const resetKeyboardState = () => {
+      keyboardOpenRef.current = false;
+
+      lockedRawKeyboardHeightRef.current = 0;
+
+      typingLockRef.current = false;
+
+      setKeyboardHeight(0);
+
+      if (keyboardCloseTimeoutRef.current) {
+        clearTimeout(keyboardCloseTimeoutRef.current);
+
+        keyboardCloseTimeoutRef.current = null;
+      }
+
+      if (typingUnlockTimeoutRef.current) {
+        clearTimeout(typingUnlockTimeoutRef.current);
+
+        typingUnlockTimeoutRef.current = null;
+      }
+    };
+
+    /**
+     * lock raw keyboard
+     * lalu visualkan adjusted
+     */
+    const applyKeyboardHeight = (rawHeight: number) => {
+      lockedRawKeyboardHeightRef.current = rawHeight;
+
+      setKeyboardHeight(
+        getAdjustedHeight(rawHeight)
+      );
+    };
+
+    /**
+     * android spam resize saat mengetik
+     */
+    const handleTyping = () => {
+      typingLockRef.current = true;
+
+      if (typingUnlockTimeoutRef.current) {
+        clearTimeout(typingUnlockTimeoutRef.current);
+      }
+
+      typingUnlockTimeoutRef.current =
+        window.setTimeout(() => {
+          typingLockRef.current = false;
+        }, 180);
+    };
+
+    window.addEventListener("keydown", handleTyping);
+
+    const handleViewportResize = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+
+      frame = requestAnimationFrame(() => {
+        /**
+         * saat mengetik:
+         * jangan update viewport
+         */
+        if (
+          typingLockRef.current &&
+          keyboardOpenRef.current
+        ) {
+          setKeyboardHeight(
+            getAdjustedHeight(
+              lockedRawKeyboardHeightRef.current
+            )
+          );
+
+          return;
+        }
+
+        const windowHeight = window.innerHeight;
+
+        const viewportHeight = viewport.height;
+
+        const rawKeyboardHeight =
+          windowHeight - viewportHeight;
+
+        const keyboardThreshold = 140;
+
+        /**
+         * keyboard terbuka
+         */
+        if (rawKeyboardHeight > keyboardThreshold) {
+          keyboardOpenRef.current = true;
+
+          if (keyboardCloseTimeoutRef.current) {
+            clearTimeout(keyboardCloseTimeoutRef.current);
+
+            keyboardCloseTimeoutRef.current = null;
+          }
+
+          const currentLocked =
+            lockedRawKeyboardHeightRef.current;
+
+          const delta = Math.abs(
+            rawKeyboardHeight - currentLocked
+          );
+
+          /**
+           * ignore resize kecil android
+           */
+          if (delta > 120 || currentLocked === 0) {
+            applyKeyboardHeight(
+              rawKeyboardHeight
+            );
+          }
+
+          return;
+        }
+
+        /**
+         * viewport bounce android
+         */
+        if (keyboardOpenRef.current) {
+          const activeElement = document.activeElement;
+
+          const isTyping =
+            activeElement instanceof HTMLTextAreaElement ||
+            activeElement instanceof HTMLInputElement;
+
+          /**
+           * tahan posisi jika masih fokus
+           */
+          if (isTyping) {
+            setKeyboardHeight(
+              getAdjustedHeight(
+                lockedRawKeyboardHeightRef.current
+              )
+            );
+
+            return;
+          }
+
+          /**
+           * delay close
+           */
+          if (!keyboardCloseTimeoutRef.current) {
+            keyboardCloseTimeoutRef.current =
+              window.setTimeout(() => {
+                resetKeyboardState();
+              }, 220);
+          }
+
+          return;
+        }
+
+        resetKeyboardState();
+      });
+    };
+
+    handleViewportResize();
+
+    viewport.addEventListener(
       "resize",
       handleViewportResize
     );
 
-    window.visualViewport.addEventListener(
+    viewport.addEventListener(
       "scroll",
       handleViewportResize
     );
 
+    /**
+     * reset saat app diback/recent apps
+     */
+    window.addEventListener(
+      "pagehide",
+      resetKeyboardState
+    );
+
+    window.addEventListener(
+      "blur",
+      resetKeyboardState
+    );
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        resetKeyboardState();
+      }
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
+
     return () => {
-      window.visualViewport.removeEventListener(
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+
+      if (keyboardCloseTimeoutRef.current) {
+        clearTimeout(keyboardCloseTimeoutRef.current);
+      }
+
+      if (typingUnlockTimeoutRef.current) {
+        clearTimeout(typingUnlockTimeoutRef.current);
+      }
+
+      window.removeEventListener(
+        "keydown",
+        handleTyping
+      );
+
+      viewport.removeEventListener(
         "resize",
         handleViewportResize
       );
 
-      window.visualViewport.removeEventListener(
+      viewport.removeEventListener(
         "scroll",
         handleViewportResize
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        resetKeyboardState
+      );
+
+      window.removeEventListener(
+        "blur",
+        resetKeyboardState
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
       );
     };
   }, [isDesktop]);
@@ -70,6 +316,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
     for (let i = 0; i < messages.length; i++) {
       const current = messages[i];
+
       const next = messages[i + 1];
 
       const isStoppedPair =
@@ -79,6 +326,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
       if (isStoppedPair) {
         i++;
+
         continue;
       }
 
@@ -114,9 +362,11 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
         cleanupStoppedConversations();
 
-        const aiText = data.response || "(tidak ada balasan)";
+        const aiText =
+          data.response || "(tidak ada balasan)";
 
-        const aiMessageId = Date.now().toString() + "_ai";
+        const aiMessageId =
+          Date.now().toString() + "_ai";
 
         chatStore.addMessage({
           id: aiMessageId,
@@ -142,7 +392,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
         chatStore.setStreamingAiId(null);
 
-        if (err instanceof DOMException && err.name === "AbortError") {
+        if (
+          err instanceof DOMException &&
+          err.name === "AbortError"
+        ) {
         } else {
           chatStore.addMessage({
             id: Date.now().toString() + "_err",
@@ -164,7 +417,9 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
       lastUserMessageRef.current = text;
 
       if (editingMessageIdRef.current) {
-        chatStore.removeFrom(editingMessageIdRef.current);
+        chatStore.removeFrom(
+          editingMessageIdRef.current
+        );
 
         editingMessageIdRef.current = null;
       }
@@ -195,8 +450,13 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
     editingMessageIdRef.current = null;
 
-    if (aiMessageAddedRef.current && streamingAiIdRef.current) {
-      chatStore.removeFrom(streamingAiIdRef.current);
+    if (
+      aiMessageAddedRef.current &&
+      streamingAiIdRef.current
+    ) {
+      chatStore.removeFrom(
+        streamingAiIdRef.current
+      );
 
       streamingAiIdRef.current = null;
 
@@ -239,7 +499,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
   );
 
   const handleRegenerate = useCallback(
-    async (userText: string, aiMessageId: string) => {
+    async (
+      userText: string,
+      aiMessageId: string
+    ) => {
       const messages = chatStore.getState().messages;
 
       const aiIndex = messages.findIndex(
@@ -248,7 +511,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
 
       if (aiIndex === -1) return;
 
-      const preservedMessages = messages.slice(0, aiIndex);
+      const preservedMessages = messages.slice(
+        0,
+        aiIndex
+      );
 
       chatStore.setMessages(preservedMessages);
 
@@ -272,11 +538,15 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
     chatStore.setCurrentInput("");
   }, []);
 
-  const handleTextChange = useCallback((text: string) => {
-    chatStore.setCurrentInput(text);
-  }, []);
+  const handleTextChange = useCallback(
+    (text: string) => {
+      chatStore.setCurrentInput(text);
+    },
+    []
+  );
 
-  const isEditing = editingMessageIdRef.current !== null;
+  const isEditing =
+    editingMessageIdRef.current !== null;
 
   return (
     <div
@@ -294,7 +564,9 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
         onEditMessage={handleEditMessage}
         onRetryMessage={handleRetry}
         onRegenerateMessage={handleRegenerate}
-        editingMessageId={editingMessageIdRef.current}
+        editingMessageId={
+          editingMessageIdRef.current
+        }
         extraBottomPadding={keyboardHeight}
       />
 
@@ -306,11 +578,14 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
           right: 0,
           zIndex: 5,
           pointerEvents: "none",
-          paddingLeft: isDesktop ? "260px" : "0",
+          paddingLeft: isDesktop
+            ? "260px"
+            : "0",
           transition: isDesktop
             ? "padding-left 0.3s ease"
-            : "bottom 0.1s ease-out",
+            : "bottom 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
           backgroundColor: "transparent",
+          willChange: "bottom",
         }}
       >
         <div

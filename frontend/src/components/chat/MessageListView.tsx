@@ -22,9 +22,11 @@ interface MessageListViewProps {
   editingMessageId?: string | null;
 }
 
+// Ikon scroll button baru (panah bawah)
 const ScrollDownIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 5v14" />
+    <path d="m19 12-7 7-7-7" />
   </svg>
 );
 
@@ -326,14 +328,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   };
 
   const handleRetry = (text: string, msgId: string) => {
-  setSpinningRetryId(msgId);
-
-  setTimeout(() => {
-    setSpinningRetryId(null);
-
-    onRetryMessage?.(text, msgId);
-  }, 600);
-};
+    setSpinningRetryId(msgId);
+    setTimeout(() => {
+      setSpinningRetryId(null);
+      onRetryMessage?.(text, msgId);
+    }, 600);
+  };
 
   const handleRegenerate = (userText: string, aiMsgId: string) => {
     setSpinningRegenerateId(aiMsgId);
@@ -420,6 +420,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const chatLetterSpacing = "-0.02em";
   const chatBg = "#fdf6f0";
 
+  // Warna latar disamakan dengan halaman chat
   const SCROLL_BUTTON_STYLE: React.CSSProperties = {
     position: "sticky",
     bottom: 16,
@@ -428,7 +429,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     height: 40,
     borderRadius: "50%",
     border: "1px solid rgba(0,0,0,0.04)",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "#fdf6f0",
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
@@ -445,7 +446,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const ACTION_BOARD_BASE_STYLE: React.CSSProperties = {
     position: "fixed",
     minWidth: 180,
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "#fdf6f0",
     backdropFilter: "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     borderRadius: 14,
