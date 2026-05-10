@@ -11,17 +11,17 @@ interface ChatInputBarProps {
   isEditing?: boolean;
 }
 
-// Ikon panah atas (send)
+// Ikon panah atas (send) – diperbesar
 const SendIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m5 12 7-7 7 7" />
     <path d="M12 19V5" />
   </svg>
 );
 
-// Ikon stop (kotak)
+// Ikon stop (kotak outline) – diperbesar
 const StopIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="14" height="14" x="5" y="5" rx="2" />
   </svg>
 );
@@ -34,8 +34,8 @@ const CloseIcon = () => (
 );
 
 // Warna
-const ACTIVE_COLOR = "rgb(214, 143, 111)";    // oranye hangat saat ada teks/stop
-const INACTIVE_COLOR = "rgb(168, 162, 158)";   // abu-abu hangat saat tidak ada teks
+const ACTIVE_COLOR = "rgb(214, 143, 111)";
+const INACTIVE_COLOR = "rgb(168, 162, 158)";
 
 export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   text,
@@ -98,7 +98,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const chatFont = "'Literata', serif";
 
-  // Warna tombol
   const buttonBg = isLoading
     ? ACTIVE_COLOR
     : isSendDisabled

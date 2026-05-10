@@ -19,7 +19,6 @@ const STORAGE_KEY = "hydra_chat_state";
 
 class ChatStore {
   private state: ChatState = this.loadState();
-
   private listeners: Listener[] = [];
 
   private loadState(): ChatState {
@@ -29,14 +28,12 @@ class ChatStore {
         const parsed = JSON.parse(stored);
         return {
           messages: parsed.messages || [],
-          isLoading: false,           // jangan simpan isLoading = true
+          isLoading: false,
           streamingAiId: null,
           currentInput: parsed.currentInput || "",
         };
       }
-    } catch {
-      // fallback
-    }
+    } catch {}
     return {
       messages: [],
       isLoading: false,
@@ -52,9 +49,7 @@ class ChatStore {
         currentInput: this.state.currentInput,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   getState(): ChatState {
@@ -70,7 +65,7 @@ class ChatStore {
 
   private emit() {
     this.listeners.forEach((listener) => listener());
-    this.saveState();       // simpan setiap ada perubahan
+    this.saveState();
   }
 
   addMessage(message: Message) {
@@ -112,6 +107,15 @@ class ChatStore {
     this.state = {
       ...this.state,
       messages: this.state.messages.slice(0, index),
+    };
+    this.emit();
+  }
+
+  // ** Baru **
+  deleteMessage(id: string) {
+    this.state = {
+      ...this.state,
+      messages: this.state.messages.filter((m) => m.id !== id),
     };
     this.emit();
   }

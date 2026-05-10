@@ -1,3 +1,5 @@
+// src/pages/ChatPage/ChatPageSidebar.tsx
+
 import React, { useRef, useState } from "react";
 
 interface ChatPageSidebarProps {
@@ -76,9 +78,9 @@ export const ChatPageSidebar: React.FC<ChatPageSidebarProps> = ({
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: isMobile ? "rgba(255, 255, 255, 0.75)" : "#fdf6f0",
-        backdropFilter: isMobile ? "blur(150px)" : "none",
-        WebkitBackdropFilter: isMobile ? "blur(150px)" : "none",
+        backgroundColor: "#fdf6f0",                  // warna sama dengan halaman chat, baik mobile maupun desktop
+        backdropFilter: isMobile ? "blur(24px)" : "none",   // blur lebih ringan agar tetap terlihat menyatu
+        WebkitBackdropFilter: isMobile ? "blur(24px)" : "none",
         padding: "16px",
         paddingLeft: 16 + extraPadding,
         display: "flex",

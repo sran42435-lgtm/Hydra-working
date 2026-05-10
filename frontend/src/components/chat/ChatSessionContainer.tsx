@@ -14,23 +14,21 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   const { isLoading, currentInput } = useChatStore();
   const { startStream, stopStream } = useStreamResponse();
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);   // tinggi keyboard di mobile
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const lastUserMessageRef = useRef<string>("");
   const editingMessageIdRef = useRef<string | null>(null);
   const streamingAiIdRef = useRef<string | null>(null);
+  const aiMessageAddedRef = useRef(false);
+  const pendingCleanupUserMsgIdRef = useRef<string | null>(null);
 
-  // Deteksi keyboard pada mobile
   useEffect(() => {
     if (isDesktop || !window.visualViewport) return;
-
     const handleViewportResize = () => {
       const viewport = window.visualViewport!;
       const windowHeight = window.innerHeight;
       const raw = windowHeight - viewport.height;
-      // ambil 85% supaya input bar dekat dengan keyboard, tapi tidak terlalu mentok
       setKeyboardHeight(raw > 0 ? raw * 0.01 : 0);
     };
-
     window.visualViewport.addEventListener("resize", handleViewportResize);
     window.visualViewport.addEventListener("scroll", handleViewportResize);
     return () => {
@@ -41,6 +39,7 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
 
   const sendToAi = useCallback(async (text: string) => {
     chatStore.setLoading(true);
+    aiMessageAddedRef.current = false;
     const controller = new AbortController();
     abortControllerRef.current = controller;
     try {
@@ -51,9 +50,25 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         signal: controller.signal,
       });
       const data = await res.json();
+      
+      // ** Bersihkan stopped message & user lama jika ada (pakai deleteMessage) **
+      if (pendingCleanupUserMsgIdRef.current) {
+        const messages = chatStore.getState().messages;
+        // Cari stopped message terbaru
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].id.endsWith("_stopped")) {
+            chatStore.deleteMessage(messages[i].id);
+            break;
+          }
+        }
+        chatStore.deleteMessage(pendingCleanupUserMsgIdRef.current);
+        pendingCleanupUserMsgIdRef.current = null;
+      }
+      
       const aiText = data.response || "(tidak ada balasan)";
       const aiMessageId = Date.now().toString() + "_ai";
       chatStore.addMessage({ id: aiMessageId, role: "assistant", content: "" });
+      aiMessageAddedRef.current = true;
       streamingAiIdRef.current = aiMessageId;
       chatStore.setStreamingAiId(aiMessageId);
       startStream(aiText, aiMessageId, () => {
@@ -64,7 +79,9 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
     } catch (err: unknown) {
       streamingAiIdRef.current = null;
       chatStore.setStreamingAiId(null);
-      if (err instanceof DOMException && err.name === "AbortError") { /* stop */ } else {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // stop ditekan
+      } else {
         chatStore.addMessage({
           id: Date.now().toString() + "_err",
           role: "assistant",
@@ -79,10 +96,24 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
 
   const handleSend = useCallback(async (text: string) => {
     lastUserMessageRef.current = text;
+
     if (editingMessageIdRef.current) {
       chatStore.removeFrom(editingMessageIdRef.current);
       editingMessageIdRef.current = null;
+    } else {
+      const messages = chatStore.getState().messages;
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && lastMsg.id.endsWith("_stopped")) {
+        // Simpan ID user message tepat sebelum stopped untuk dibersihkan nanti
+        for (let i = messages.length - 2; i >= 0; i--) {
+          if (messages[i].role === "user") {
+            pendingCleanupUserMsgIdRef.current = messages[i].id;
+            break;
+          }
+        }
+      }
     }
+
     const userMessage = { id: Date.now().toString(), role: "user" as const, content: text };
     chatStore.addMessage(userMessage);
     chatStore.setCurrentInput("");
@@ -90,30 +121,53 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
   }, [sendToAi]);
 
   const handleStop = () => {
-    if (abortControllerRef.current) { abortControllerRef.current.abort(); abortControllerRef.current = null; }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     stopStream();
     editingMessageIdRef.current = null;
-    chatStore.setStreamingAiId(null);
-    const streamingId = chatStore.getState().streamingAiId;
-    if (streamingId) { chatStore.removeFrom(streamingId); streamingAiIdRef.current = null; }
-    chatStore.addMessage({
-      id: Date.now().toString() + "_stopped",
-      role: "assistant",
-      content: "pesan telah dihentikan",
-    });
+    pendingCleanupUserMsgIdRef.current = null; // batalkan pembersihan tertunda
+
+    if (aiMessageAddedRef.current && streamingAiIdRef.current) {
+      chatStore.removeFrom(streamingAiIdRef.current);
+      streamingAiIdRef.current = null;
+      chatStore.setStreamingAiId(null);
+
+      chatStore.addMessage({
+        id: Date.now().toString() + "_stopped",
+        role: "assistant",
+        content: "pesan telah dihentikan",
+      });
+    } else {
+      chatStore.setStreamingAiId(null);
+      streamingAiIdRef.current = null;
+
+      chatStore.addMessage({
+        id: Date.now().toString() + "_stopped",
+        role: "assistant",
+        content: "pesan telah dihentikan",
+      });
+    }
+
     chatStore.setLoading(false);
   };
 
   const handleRetry = useCallback(async (text: string) => {
     const messages = chatStore.getState().messages;
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") { chatStore.removeFrom(messages[i].id); break; }
+      if (messages[i].role === "user") {
+        chatStore.removeFrom(messages[i].id);
+        break;
+      }
     }
+    pendingCleanupUserMsgIdRef.current = null;
     await handleSend(text);
   }, [handleSend]);
 
   const handleRegenerate = useCallback(async (userText: string, aiMessageId: string) => {
     chatStore.removeFrom(aiMessageId);
+    pendingCleanupUserMsgIdRef.current = null;
     await sendToAi(userText);
   }, [sendToAi]);
 
@@ -141,7 +195,6 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
       backgroundColor: "transparent",
       position: "relative",
     }}>
-      {/* Daftar pesan – padding bawah ditambah saat keyboard muncul agar konten tidak tertutup */}
       <MessageListView
         isLoading={isLoading}
         isDesktop={isDesktop}
@@ -149,13 +202,12 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({ isDe
         onRetryMessage={handleRetry}
         onRegenerateMessage={handleRegenerate}
         editingMessageId={editingMessageIdRef.current}
-        extraBottomPadding={keyboardHeight}   // ← props baru
+        extraBottomPadding={keyboardHeight}
       />
 
-      {/* Input bar – menempel di atas keyboard */}
       <div style={{
         position: "fixed",
-        bottom: keyboardHeight,               // naik setinggi keyboard
+        bottom: keyboardHeight,
         left: 0,
         right: 0,
         zIndex: 5,

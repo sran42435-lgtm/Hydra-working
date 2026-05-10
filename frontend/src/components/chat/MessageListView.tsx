@@ -1,4 +1,11 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+  useDeferredValue,
+} from "react";
 import { chatStore, Message } from "../../store/chat_state_store";
 import { HydraIcon } from "../ui/HydraIcon";
 import { ThinkingBubble } from "./ThinkingBubble";
@@ -127,6 +134,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   );
 
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
+  const deferredMessages = useDeferredValue(messages);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,6 +147,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isScrolling, setIsScrolling] = useState(false);
+  const isScrollingRef = useRef(false);
+  const tickingRef = useRef(false);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionBoardId, setActionBoardId] = useState<string | null>(null);
   const [spinningRetryId, setSpinningRetryId] = useState<string | null>(null);
@@ -170,8 +182,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const mergedMessages = useMemo(() => {
     const result: Message[] = [];
-    for (let i = 0; i < messages.length; i++) {
-      const current = messages[i];
+    for (let i = 0; i < deferredMessages.length; i++) {
+      const current = deferredMessages[i];
       if (current.id.endsWith("_stopped")) {
         result.push(current);
         continue;
@@ -187,7 +199,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       result.push({ ...current });
     }
     return result;
-  }, [messages]);
+  }, [deferredMessages]);
 
   const hiddenIds = useMemo(() => {
     if (!editingMessageId) return new Set<string>();
@@ -196,21 +208,59 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     return new Set(mergedMessages.slice(idx).map((m) => m.id));
   }, [mergedMessages, editingMessageId]);
 
+  const chunkCache = useMemo(() => {
+    const cache: Record<string, { chunks: string[] }> = {};
+    mergedMessages.forEach((msg) => {
+      if (msg.role === "assistant") {
+        const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
+        const words = cleanContent.split(" ");
+        const chunks: string[] = [];
+        for (let i = 0; i < words.length; i += 4) {
+          chunks.push(words.slice(i, i + 4).join(" "));
+        }
+        cache[msg.id] = { chunks };
+      }
+    });
+    return cache;
+  }, [mergedMessages]);
+
+  const prevChunkCountRef = useRef<Record<string, number>>({});
   useEffect(() => {
-    const behavior: ScrollBehavior = isLoading ? "auto" : "smooth";
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, [mergedMessages, isLoading]);
+    mergedMessages.forEach((msg) => {
+      if (msg.role === "assistant") {
+        const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
+        const words = cleanContent.split(" ");
+        prevChunkCountRef.current[msg.id] = Math.ceil(words.length / 4);
+      }
+    });
+  }, [mergedMessages]);
 
   const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const threshold = 50;
-    const atBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
-    setIsAtBottom(atBottom);
-    setIsScrolling(true);
-    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => setIsScrolling(false), 0);
+    if (tickingRef.current) return;
+    tickingRef.current = true;
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (!container) {
+        tickingRef.current = false;
+        return;
+      }
+      const threshold = 50;
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+      setIsAtBottom(atBottom);
+
+      if (!isScrollingRef.current) {
+        isScrollingRef.current = true;
+        setIsScrolling(true);
+      }
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+      scrollTimerRef.current = setTimeout(() => {
+        isScrollingRef.current = false;
+        setIsScrolling(false);
+      }, 0);
+
+      tickingRef.current = false;
+    });
   }, []);
 
   useEffect(() => {
@@ -226,6 +276,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   useEffect(() => {
     if (isScrolling) setActionBoardId(null);
   }, [isScrolling]);
+
+  useEffect(() => {
+    const behavior: ScrollBehavior = isLoading ? "auto" : "smooth";
+    bottomRef.current?.scrollIntoView({ behavior });
+  }, [mergedMessages, isLoading]);
 
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -304,16 +359,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const startAiLongPress = useCallback((msgId: string, content: string) => {
     longPressTargetRef.current = msgId;
     longPressFiredRef.current = false;
-
     if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
-
     shrinkTimerRef.current = setTimeout(() => {
       if (longPressTargetRef.current === msgId && !longPressFiredRef.current) {
         setPressedAiId(msgId);
       }
     }, 200);
-
     longPressTimerRef.current = setTimeout(() => {
       if (shrinkTimerRef.current) clearTimeout(shrinkTimerRef.current);
       if (longPressTargetRef.current === msgId) {
@@ -341,7 +393,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const showScrollButton = !isAtBottom && !isScrolling;
 
-  const boardActiveScale = isBoardPressed ? 0.92 : (isDraggingBoard ? 0.95 : 1);
+  const boardActiveScale = isBoardPressed ? 0.92 : isDraggingBoard ? 0.95 : 1;
 
   const boardAnimation = (() => {
     if (hasBoardAppeared) return "none";
@@ -356,9 +408,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, [actionBoardId]);
 
   useEffect(() => {
-    if (isDraggingBoard || isBoardPressed) {
-      setHasBoardAppeared(true);
-    }
+    if (isDraggingBoard || isBoardPressed) setHasBoardAppeared(true);
   }, [isDraggingBoard, isBoardPressed]);
 
   const chatFont = "'Literata', serif";
@@ -368,16 +418,63 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const chatLetterSpacing = "-0.02em";
   const chatBg = "#fdf6f0";
 
-  const prevChunkCountRef = useRef<Record<string, number>>({});
-  useEffect(() => {
-    mergedMessages.forEach((msg) => {
-      if (msg.role === "assistant") {
-        const cleanContent = msg.content.replace(/[\r\n]+/g, " ").trim();
-        const words = cleanContent.split(" ");
-        prevChunkCountRef.current[msg.id] = Math.ceil(words.length / 4);
-      }
-    });
-  }, [mergedMessages]);
+  const SCROLL_BUTTON_STYLE: React.CSSProperties = {
+    position: "sticky",
+    bottom: 16,
+    left: "50%",
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    border: "1px solid rgba(0,0,0,0.04)",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    color: "#1a1a1a",
+    zIndex: 6,
+    transform: "translateX(-50%) scale(1)",
+    animation: "scaleIn 0.25s ease forwards",
+  };
+
+  const ACTION_BOARD_BASE_STYLE: React.CSSProperties = {
+    position: "fixed",
+    minWidth: 180,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    borderRadius: 14,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+    border: "1px solid rgba(0,0,0,0.04)",
+    padding: "0 0 4px 0",
+    zIndex: 21,
+    cursor: "default",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    touchAction: "none",
+  };
+
+  const HANDLE_STYLE: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "12px 0 8px 0",
+    cursor: "grab",
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  };
+
+  const HANDLE_PILL_STYLE: React.CSSProperties = {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(120, 113, 108, 0.42)",
+  };
 
   return (
     <div
@@ -461,7 +558,15 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           textAlign: "center",
         }}>
           <HydraIcon size={48} />
-          <p style={{ marginTop: 12, color: "#1a1a1a", fontFamily: chatFont, fontSize: chatFontSize, fontWeight: chatFontWeight, lineHeight: chatLineHeight, letterSpacing: chatLetterSpacing }}>
+          <p style={{
+            marginTop: 12,
+            color: "#1a1a1a",
+            fontFamily: chatFont,
+            fontSize: chatFontSize,
+            fontWeight: chatFontWeight,
+            lineHeight: chatLineHeight,
+            letterSpacing: chatLetterSpacing,
+          }}>
             Kirim pesan untuk memulai
           </p>
         </div>
@@ -501,26 +606,25 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           const isStreamingThis = msg.id === streamingAiId;
           const isSpinningRegen = spinningRegenerateId === msg.id;
           const isPressed = pressedAiId === msg.id;
-
           const prevMsg = mergedMessages[idx - 1];
           const userText = prevMsg?.role === "user" ? prevMsg.content : "";
 
-          const words = cleanContent.split(" ");
-          const chunkSize = 4;
-          const chunks: string[] = [];
-          for (let i = 0; i < words.length; i += chunkSize) {
-            chunks.push(words.slice(i, i + chunkSize).join(" "));
-          }
-
+          const cached = chunkCache[msg.id] || { chunks: [] };
+          const { chunks } = cached;
           const prevChunkCount = prevChunkCountRef.current[msg.id] || 0;
 
           return (
-            <div key={msg.id} style={{
-              marginBottom: 12,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-            }}>
+            <div
+              key={msg.id}
+              style={{
+                marginBottom: 12,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                contentVisibility: "auto",
+                containIntrinsicSize: "400px",
+              }}
+            >
               <div
                 onTouchStart={(e) => {
                   if (isStreamingThis) return;
@@ -559,7 +663,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   <span
                     key={i}
                     style={{
-                      animation: i >= prevChunkCount ? "fadeInChunk 0.25s ease forwards" : "none",
+                      animation:
+                        i >= prevChunkCount && !isScrolling
+                          ? "fadeInChunk 0.25s ease forwards"
+                          : "none",
                       display: "inline",
                     }}
                   >
@@ -580,7 +687,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               </div>
 
               {cleanContent && !isStreamingThis && (
-                <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                <div style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                }}>
                   <div style={{
                     width: "100%",
                     height: 1,
@@ -589,7 +701,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     transformOrigin: "left center",
                     animation: "drawLine 0.4s ease forwards",
                   }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 2, marginTop: 4 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    marginTop: 4,
+                  }}>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -630,7 +747,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                           color: "#999",
                           cursor: "pointer",
                           transition: "color 0.15s ease",
-                          animation: isSpinningRegen ? "spinOnce 0.6s ease-in-out" : "none",
+                          animation: isSpinningRegen
+                            ? "spinOnce 0.6s ease-in-out"
+                            : "none",
                         }}
                         aria-label="Kirim ulang"
                       >
@@ -666,19 +785,21 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           );
         }
 
-        // ========== USER MESSAGE ==========
         const isActionOpen = actionBoardId === msg.id;
         const isSpinning = spinningRetryId === msg.id;
 
         return (
-          <div key={msg.id} style={{
-            width: "100%",
-            marginBottom: 12,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "stretch",
-            position: "relative",
-          }}>
+          <div
+            key={msg.id}
+            style={{
+              width: "100%",
+              marginBottom: 12,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "stretch",
+              position: "relative",
+            }}
+          >
             <div style={{
               display: "flex",
               justifyContent: "flex-end",
@@ -738,26 +859,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 onMouseUp={() => setIsBoardPressed(false)}
                 onMouseLeave={() => setIsBoardPressed(false)}
                 style={{
-                  position: "fixed",
+                  ...ACTION_BOARD_BASE_STYLE,
                   left: boardPos.x,
                   top: boardPos.y,
                   transform: `translate(-50%, -50%) scale(${boardActiveScale})`,
                   transition: "transform 0.15s ease",
-                  minWidth: 180,
-                  backgroundColor: "rgba(255,255,255,0.6)",
-                  backdropFilter: "blur(24px)",
-                  WebkitBackdropFilter: "blur(24px)",
-                  borderRadius: 14,
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                  border: "1px solid rgba(0,0,0,0.04)",
-                  padding: "0 0 4px 0",
-                  zIndex: 21,
-                  cursor: "default",
-                  userSelect: "none",
-                  WebkitUserSelect: "none",
-                  touchAction: "none",
                   animation: boardAnimation,
-                  opacity: (isDraggingBoard || isBoardPressed) ? 1 : undefined,
+                  opacity: isDraggingBoard || isBoardPressed ? 1 : undefined,
                 }}
               >
                 <div
@@ -800,23 +908,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     setIsDraggingBoard(false);
                   }}
                   style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: "12px 0 8px 0",
+                    ...HANDLE_STYLE,
                     cursor: isDraggingBoard ? "grabbing" : "grab",
-                    borderTopLeftRadius: 14,
-                    borderTopRightRadius: 14,
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
                   }}
                 >
-                  <div style={{
-                    width: 40,
-                    height: 5,
-                    borderRadius: 3,
-                    backgroundColor: "rgba(59, 130, 246, 0.6)",
-                  }} />
+                  <div style={HANDLE_PILL_STYLE} />
                 </div>
 
                 <button
@@ -840,14 +936,22 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     cursor: "pointer",
                     transition: "background-color 0.1s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
                 >
                   <span>Copy message</span>
                   <ClipboardIcon />
                 </button>
 
-                <div style={{ height: 1, backgroundColor: "rgba(0,0,0,0.05)", margin: "2px 0" }} />
+                <div style={{
+                  height: 1,
+                  backgroundColor: "rgba(0,0,0,0.05)",
+                  margin: "2px 0",
+                }} />
 
                 <button
                   type="button"
@@ -870,8 +974,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     cursor: "pointer",
                     transition: "background-color 0.1s ease",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                  }
                 >
                   <span>Edit</span>
                   <PencilLineIcon />
@@ -886,30 +994,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       <div ref={bottomRef} />
 
       {showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          style={{
-            position: "sticky",
-            bottom: 16,
-            left: "50%",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            border: "1px solid rgba(0,0,0,0.04)",
-            backgroundColor: "rgba(255,255,255,0.6)",
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#1a1a1a",
-            zIndex: 6,
-            transform: "translateX(-50%) scale(1)",
-            animation: "scaleIn 0.25s ease forwards",
-          }}
-        >
+        <button onClick={scrollToBottom} style={SCROLL_BUTTON_STYLE}>
           <ScrollDownIcon />
         </button>
       )}
