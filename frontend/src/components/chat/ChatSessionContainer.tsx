@@ -7,10 +7,12 @@ import { useStreamResponse } from "../../hooks/useStreamResponse";
 
 interface ChatSessionContainerProps {
   isDesktop?: boolean;
+  sidebarWidth?: number;   // lebar panel saat ini (0 atau 260)
 }
 
 export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
   isDesktop = false,
+  sidebarWidth = 0,
 }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -579,10 +581,10 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
           zIndex: 5,
           pointerEvents: "none",
           paddingLeft: isDesktop
-            ? "260px"
+            ? `${sidebarWidth}px`   // dinamis mengikuti lebar panel
             : "0",
           transition: isDesktop
-            ? "padding-left 0.3s ease"
+            ? "padding-left 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
             : "bottom 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
           backgroundColor: "transparent",
           willChange: "bottom",

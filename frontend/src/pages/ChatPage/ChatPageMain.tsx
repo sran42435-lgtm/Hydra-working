@@ -1,3 +1,5 @@
+// src/pages/ChatPage/ChatPageMain.tsx
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import ChatPageSidebar from "./ChatPageSidebar";
 import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
@@ -87,7 +89,6 @@ export const ChatPageMain: React.FC = () => {
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  // Gaya wrapper panel
   const getWrapperStyle = (): React.CSSProperties => ({
     height: "100%",
     position: isMobile ? "fixed" : "relative",
@@ -147,7 +148,6 @@ export const ChatPageMain: React.FC = () => {
     willChange: "transform",
   };
 
-  // Gaya tombol panel desktop – posisinya absolute di dalam area chat
   const desktopPanelBtnStyle: React.CSSProperties = {
     position: "absolute",
     top: 8,
@@ -168,10 +168,11 @@ export const ChatPageMain: React.FC = () => {
     transition: "transform 0.1s ease",
   };
 
+  const sidebarWidth = isMobile ? 0 : (sidebarOpen ? 260 : 0);
+
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
-      {/* Tombol hamburger – mobile saja */}
       {isMobile && (
         <button
           onClick={() => {
@@ -198,7 +199,6 @@ export const ChatPageMain: React.FC = () => {
         </button>
       )}
       
-      {/* Tombol new chat – selalu di kanan atas */}
       <button
         onClick={handleNewChat}
         onMouseDown={() => setPressedBtn("newchat")}
@@ -217,7 +217,6 @@ export const ChatPageMain: React.FC = () => {
         <NewChatIcon />
       </button>
 
-      {/* Overlay untuk mobile */}
       {isMobile && (
         <div
           onClick={closeSidebar}
@@ -231,7 +230,6 @@ export const ChatPageMain: React.FC = () => {
         />
       )}
 
-      {/* Panel */}
       <div style={isMobile ? getWrapperStyle() : getDesktopPanelStyle()}>
         {isMobile ? (
           <ChatPageSidebar
@@ -253,9 +251,7 @@ export const ChatPageMain: React.FC = () => {
         )}
       </div>
       
-      {/* Area chat */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        {/* Tombol panel desktop – di dalam area chat agar ikut bergeser */}
         {!isMobile && (
           <button
             onClick={() => setSidebarOpen(prev => !prev)}
@@ -265,7 +261,7 @@ export const ChatPageMain: React.FC = () => {
           </button>
         )}
         
-        <ChatSessionContainer isDesktop={!isMobile} />
+        <ChatSessionContainer isDesktop={!isMobile} sidebarWidth={sidebarWidth} />
       </div>
     </div>
   );
