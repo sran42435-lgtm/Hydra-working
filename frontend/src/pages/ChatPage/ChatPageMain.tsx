@@ -17,6 +17,22 @@ const NewChatIcon = () => (
   </svg>
 );
 
+const PanelLeftCloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M9 3v18" />
+    <path d="m16 15-3-3 3-3" />
+  </svg>
+);
+
+const PanelLeftOpenIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M9 3v18" />
+    <path d="m14 9 3 3-3 3" />
+  </svg>
+);
+
 const MAX_DRAG_RIGHT = 0;
 const MAX_DRAG_LEFT = -260;
 const CLOSE_THRESHOLD = -100;
@@ -27,8 +43,6 @@ export const ChatPageMain: React.FC = () => {
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef(0);
-  const rafRef = useRef<number | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const [pressedBtn, setPressedBtn] = useState<string | null>(null);
 
@@ -57,22 +71,11 @@ export const ChatPageMain: React.FC = () => {
     if (!isDragging) return;
     const diff = currentClientX - dragStartX.current;
     const clamped = Math.min(MAX_DRAG_RIGHT, Math.max(MAX_DRAG_LEFT, diff));
-    
-    // Gunakan RAF untuk update langsung ke DOM (lebih responsif)
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-    }
-    rafRef.current = requestAnimationFrame(() => {
-      setDragOffset(clamped);
-    });
+    setDragOffset(clamped);
   }, [isDragging]);
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
     setDragOffset((currentOffset) => {
       if (currentOffset < CLOSE_THRESHOLD) {
         setSidebarOpen(false);
@@ -84,36 +87,36 @@ export const ChatPageMain: React.FC = () => {
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  const getWrapperStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      height: "100%",
-      position: isMobile ? "fixed" : "relative",
-      left: 0,
-      top: 0,
-      bottom: 0,
-      zIndex: 20,
-      willChange: "transform",
-      overflow: "hidden",
-    };
+  // Gaya wrapper panel
+  const getWrapperStyle = (): React.CSSProperties => ({
+    height: "100%",
+    position: isMobile ? "fixed" : "relative",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 20,
+    overflow: "hidden",
+    width: isMobile ? "100vw" : 260,
+    transition: isDragging
+      ? "none"
+      : "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+    transform: isMobile
+      ? sidebarOpen
+        ? isDragging
+          ? `translateX(${dragOffset}px)`
+          : "translateX(0)"
+        : "translateX(-100%)"
+      : "translateX(0)",
+    opacity: sidebarOpen || isMobile ? 1 : 0,
+    pointerEvents: sidebarOpen ? "auto" : "none",
+  });
 
-    if (isMobile) {
-      base.width = "100vw";
-      // **PENTING: tanpa transisi saat drag**
-      if (isDragging) {
-        base.transform = `translateX(${dragOffset}px)`;
-        base.transition = "none";
-      } else {
-        base.transition = "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-        base.transform = sidebarOpen ? "translateX(0)" : "translateX(-100%)";
-      }
-    } else {
-      base.width = 260;
-      base.transform = "translateX(0)";
-      base.transition = "none";
-    }
-
-    return base;
-  };
+  const getDesktopPanelStyle = (): React.CSSProperties => ({
+    width: sidebarOpen ? 260 : 0,
+    transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+    overflow: "hidden",
+    opacity: sidebarOpen ? 1 : 0,
+  });
 
   const getPressStyle = (buttonId: string): React.CSSProperties => {
     if (!isMobile) return {};
@@ -144,9 +147,31 @@ export const ChatPageMain: React.FC = () => {
     willChange: "transform",
   };
 
+  // Gaya tombol panel desktop – posisinya absolute di dalam area chat
+  const desktopPanelBtnStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 8,
+    left: 12,
+    zIndex: 25,
+    background: "#fdf6f0",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(0,0,0,0.04)",
+    borderRadius: "50%",
+    padding: "8px",
+    color: "#1a1a1a",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+    transition: "transform 0.1s ease",
+  };
+
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
+      {/* Tombol hamburger – mobile saja */}
       {isMobile && (
         <button
           onClick={() => {
@@ -173,6 +198,7 @@ export const ChatPageMain: React.FC = () => {
         </button>
       )}
       
+      {/* Tombol new chat – selalu di kanan atas */}
       <button
         onClick={handleNewChat}
         onMouseDown={() => setPressedBtn("newchat")}
@@ -191,29 +217,54 @@ export const ChatPageMain: React.FC = () => {
         <NewChatIcon />
       </button>
 
-      <div
-        onClick={closeSidebar}
-        style={{
-          position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.3)", zIndex: 10,
-          opacity: isMobile && sidebarOpen ? 1 : 0,
-          visibility: isMobile && sidebarOpen ? "visible" : "hidden",
-          transition: "opacity 0.3s ease, visibility 0.3s ease",
-          pointerEvents: isMobile && sidebarOpen ? "auto" : "none",
-        }}
-      />
-
-      <div style={getWrapperStyle()}>
-        <ChatPageSidebar
-          onNewChat={handleNewChat}
-          isMobile={isMobile}
-          dragOffset={dragOffset}
-          onDragStart={handleDragStart}
-          onDragMove={handleDragMove}
-          onDragEnd={handleDragEnd}
+      {/* Overlay untuk mobile */}
+      {isMobile && (
+        <div
+          onClick={closeSidebar}
+          style={{
+            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.3)", zIndex: 10,
+            opacity: sidebarOpen ? 1 : 0,
+            visibility: sidebarOpen ? "visible" : "hidden",
+            transition: "opacity 0.3s ease, visibility 0.3s ease",
+            pointerEvents: sidebarOpen ? "auto" : "none",
+          }}
         />
+      )}
+
+      {/* Panel */}
+      <div style={isMobile ? getWrapperStyle() : getDesktopPanelStyle()}>
+        {isMobile ? (
+          <ChatPageSidebar
+            onNewChat={handleNewChat}
+            isMobile={isMobile}
+            dragOffset={dragOffset}
+            onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
+            onDragEnd={handleDragEnd}
+          />
+        ) : (
+          <div style={{ width: 260, height: "100%" }}>
+            <ChatPageSidebar
+              onNewChat={handleNewChat}
+              isMobile={isMobile}
+              dragOffset={0}
+            />
+          </div>
+        )}
       </div>
       
+      {/* Area chat */}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        {/* Tombol panel desktop – di dalam area chat agar ikut bergeser */}
+        {!isMobile && (
+          <button
+            onClick={() => setSidebarOpen(prev => !prev)}
+            style={desktopPanelBtnStyle}
+          >
+            {sidebarOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
+          </button>
+        )}
+        
         <ChatSessionContainer isDesktop={!isMobile} />
       </div>
     </div>
