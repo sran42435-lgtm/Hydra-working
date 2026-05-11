@@ -327,11 +327,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   };
 
   const handleRetry = (text: string, msgId: string) => {
-    setSpinningRetryId(msgId);
-    setTimeout(() => {
-      setSpinningRetryId(null);
-      onRetryMessage?.(text, msgId);
-    }, 600);
+    onRetryMessage?.(text, msgId);
+    setActionBoardId(null);
   };
 
   const handleRegenerate = (userText: string, aiMsgId: string) => {
@@ -986,14 +983,12 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   <PencilLineIcon />
                 </button>
 
-                {/* Divider untuk Retry */}
                 <div style={{
                   height: 1,
                   backgroundColor: "rgba(0,0,0,0.05)",
                   margin: "2px 0",
                 }} />
 
-                {/* Tombol Retry */}
                 <button
                   type="button"
                   onClick={(e) => {
