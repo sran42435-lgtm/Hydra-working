@@ -16,7 +16,7 @@ interface MessageListViewProps {
   isLoading: boolean;
   isDesktop?: boolean;
   extraBottomPadding?: number;
-  sidebarWidth?: number;   // ← tambahkan
+  sidebarWidth?: number;
   onEditMessage?: (text: string, messageId: string) => void;
   onRetryMessage?: (text: string, messageId: string) => void;
   onRegenerateMessage?: (userText: string, aiMessageId: string) => void;
@@ -160,6 +160,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const [selectedAiContent, setSelectedAiContent] = useState<string>("");
   const [pressedAiId, setPressedAiId] = useState<string | null>(null);
+  const [pressedUserId, setPressedUserId] = useState<string | null>(null);
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
   const [isDraggingBoard, setIsDraggingBoard] = useState(false);
@@ -329,8 +330,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   };
 
   const handleRetry = (text: string, msgId: string) => {
-    onRetryMessage?.(text, msgId);
-    setActionBoardId(null);
+    setSpinningRetryId(msgId);
+    setTimeout(() => {
+      setSpinningRetryId(null);
+      onRetryMessage?.(text, msgId);
+    }, 600);
   };
 
   const handleRegenerate = (userText: string, aiMsgId: string) => {
@@ -475,6 +479,37 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     borderRadius: 3,
     backgroundColor: "rgba(120, 113, 108, 0.42)",
   };
+
+  // Timer & state untuk long press user bubble (sheet)
+  const userLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userLongPressFiredRef = useRef<boolean>(false);
+
+  const startUserLongPress = useCallback((msgId: string) => {
+    if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
+    userLongPressFiredRef.current = false;
+    userLongPressTimerRef.current = setTimeout(() => {
+      userLongPressFiredRef.current = true;
+      setPressedUserId(msgId);
+    }, 500);
+  }, []);
+
+  const endUserLongPress = useCallback((msg: Message) => {
+    if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
+    if (userLongPressFiredRef.current) {
+      setPressedUserId(null);
+      handleOpenSheet(msg.content);
+    }
+  }, [handleOpenSheet]);
+
+  const cancelUserLongPress = useCallback(() => {
+    if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
+    setPressedUserId(null);
+  }, []);
+
+  const handleUserClick = useCallback((msg: Message, clientX: number, clientY: number) => {
+    if (userLongPressFiredRef.current) return;
+    openBoard(msg.id, clientX, clientY);
+  }, [openBoard]);
 
   return (
     <div
@@ -785,8 +820,10 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           );
         }
 
+        // ========== USER MESSAGE ==========
         const isActionOpen = actionBoardId === msg.id;
         const isSpinning = spinningRetryId === msg.id;
+        const isUserPressed = pressedUserId === msg.id;
 
         return (
           <div
@@ -833,22 +870,45 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 </button>
               )}
 
+              {/* Wrapper bubble pengguna */}
               <div
-                onClick={(e) => {
+                onTouchStart={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                  openBoard(msg.id, e.clientX, e.clientY);
+                  startUserLongPress(msg.id);
+                }}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                  endUserLongPress(msg);
+                }}
+                onTouchMove={cancelUserLongPress}
+                onTouchCancel={cancelUserLongPress}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  startUserLongPress(msg.id);
+                }}
+                onMouseUp={(e) => {
+                  e.stopPropagation();
+                  endUserLongPress(msg);
+                }}
+                onMouseLeave={cancelUserLongPress}
+                onClick={(e) => {
+                  handleUserClick(msg, e.clientX, e.clientY);
                 }}
                 onContextMenu={(e) => e.preventDefault()}
                 style={{
                   maxWidth: "75%",
                   cursor: "pointer",
                   flexShrink: 0,
+                  transform: isUserPressed ? "scale(0.93)" : "scale(1)",
+                  transition: "transform 0.15s ease",
                 }}
               >
                 <MessageBubbleView content={msg.content} isUser />
               </div>
             </div>
 
+            {/* Action board */}
             {isActionOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}

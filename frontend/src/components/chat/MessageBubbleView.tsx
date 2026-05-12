@@ -43,6 +43,8 @@ export const MessageBubbleView: React.FC<MessageBubbleViewProps> = ({
         whiteSpace: "normal",
         wordBreak: "break-word",
         boxShadow: "0 4px 12px rgba(120, 70, 50, 0.10)",
+        userSelect: "none",          // ← cegah selection
+        WebkitUserSelect: "none",    // ← cegah selection (Safari)
       }}
     >
       {content}
