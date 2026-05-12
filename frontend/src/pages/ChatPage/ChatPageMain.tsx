@@ -47,16 +47,25 @@ export const ChatPageMain: React.FC = () => {
   const dragStartX = useRef(0);
 
   const [pressedBtn, setPressedBtn] = useState<string | null>(null);
+  const prevIsMobileRef = useRef(isMobile);
 
+  // Update isMobile saja saat resize – jangan ganggu sidebarOpen
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      setSidebarOpen(!mobile);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Hanya reset sidebarOpen saat benar‑benar ganti mode (mobile ↔ desktop)
+  useEffect(() => {
+    if (prevIsMobileRef.current !== isMobile) {
+      setSidebarOpen(!isMobile);   // desktop terbuka, mobile tertutup
+      prevIsMobileRef.current = isMobile;
+    }
+  }, [isMobile]);
 
   const handleNewChat = () => {
     chatStore.clearMessages();
