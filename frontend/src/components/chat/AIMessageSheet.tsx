@@ -4,12 +4,18 @@ interface AIMessageSheetProps {
   content: string;
   onClose: () => void;
   isDesktop?: boolean;
+  sidebarWidth?: number;   // lebar panel saat ini (0 atau 260)
 }
 
 const CLOSE_THRESHOLD = 150;
 const VELOCITY_THRESHOLD = 0.5;
 
-export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose, isDesktop = false }) => {
+export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
+  content,
+  onClose,
+  isDesktop = false,
+  sidebarWidth = 0,
+}) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
@@ -137,8 +143,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
 
   if (!content) return null;
 
-  const sidebarWidth = isDesktop ? 260 : 0;
-
   return (
     <>
       <div
@@ -163,7 +167,7 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({ content, onClose
           left: sidebarWidth,
           right: 0,
           height: "90vh",
-          backgroundColor: "#fdf6f0",         // warna sama dengan halaman chat
+          backgroundColor: "#fdf6f0",
           backdropFilter: "blur(30px)",
           WebkitBackdropFilter: "blur(30px)",
           borderTopLeftRadius: 36,

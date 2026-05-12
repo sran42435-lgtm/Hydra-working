@@ -16,6 +16,7 @@ interface MessageListViewProps {
   isLoading: boolean;
   isDesktop?: boolean;
   extraBottomPadding?: number;
+  sidebarWidth?: number;   // ← tambahkan
   onEditMessage?: (text: string, messageId: string) => void;
   onRetryMessage?: (text: string, messageId: string) => void;
   onRegenerateMessage?: (userText: string, aiMessageId: string) => void;
@@ -125,6 +126,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   isLoading,
   isDesktop = false,
   extraBottomPadding = 0,
+  sidebarWidth,
   onEditMessage,
   onRetryMessage,
   onRegenerateMessage,
@@ -1040,6 +1042,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           content={selectedAiContent}
           onClose={() => setSelectedAiContent("")}
           isDesktop={isDesktop}
+          sidebarWidth={sidebarWidth ?? (isDesktop ? 260 : 0)}
         />
       )}
     </div>

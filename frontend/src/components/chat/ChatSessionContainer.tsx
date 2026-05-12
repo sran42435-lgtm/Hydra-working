@@ -563,12 +563,11 @@ export const ChatSessionContainer: React.FC<ChatSessionContainerProps> = ({
       <MessageListView
         isLoading={isLoading}
         isDesktop={isDesktop}
+        sidebarWidth={sidebarWidth}
         onEditMessage={handleEditMessage}
         onRetryMessage={handleRetry}
         onRegenerateMessage={handleRegenerate}
-        editingMessageId={
-          editingMessageIdRef.current
-        }
+        editingMessageId={editingMessageIdRef.current}
         extraBottomPadding={keyboardHeight}
       />
 
