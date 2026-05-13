@@ -329,7 +329,14 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setActionBoardId(null);
   };
 
+  // Retry dari papan aksi – langsung, tanpa animasi
   const handleRetry = (text: string, msgId: string) => {
+    onRetryMessage?.(text, msgId);
+    setActionBoardId(null);
+  };
+
+  // Retry dari ikon di sebelah kiri bubble – dengan animasi spin
+  const handleRetryWithSpin = (text: string, msgId: string) => {
     setSpinningRetryId(msgId);
     setTimeout(() => {
       setSpinningRetryId(null);
@@ -849,7 +856,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRetry(msg.content, msg.id);
+                    handleRetryWithSpin(msg.content, msg.id);   // ← animasi spin
                   }}
                   style={{
                     display: "flex",
@@ -1055,7 +1062,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRetry(msg.content, msg.id);
+                    handleRetry(msg.content, msg.id);     // ← tanpa spin
                   }}
                   style={{
                     width: "100%",
