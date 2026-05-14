@@ -49,7 +49,6 @@ export const ChatPageMain: React.FC = () => {
   const [pressedBtn, setPressedBtn] = useState<string | null>(null);
   const prevIsMobileRef = useRef(isMobile);
 
-  // Update isMobile saja saat resize – jangan ganggu sidebarOpen
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
@@ -59,10 +58,9 @@ export const ChatPageMain: React.FC = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Hanya reset sidebarOpen saat benar‑benar ganti mode (mobile ↔ desktop)
   useEffect(() => {
     if (prevIsMobileRef.current !== isMobile) {
-      setSidebarOpen(!isMobile);   // desktop terbuka, mobile tertutup
+      setSidebarOpen(!isMobile);
       prevIsMobileRef.current = isMobile;
     }
   }, [isMobile]);
@@ -128,104 +126,78 @@ export const ChatPageMain: React.FC = () => {
     opacity: sidebarOpen ? 1 : 0,
   });
 
-  const getPressStyle = (buttonId: string): React.CSSProperties => {
-    if (!isMobile) return {};
-    return {
-      transform: pressedBtn === buttonId ? "scale(0.85)" : "scale(1)",
-      transition: "transform 0.1s ease",
-    };
-  };
-
-  const floatingBtnBase: React.CSSProperties = {
-    position: "fixed",
-    zIndex: 5,
-    background: "#fdf6f0",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    border: "1px solid rgba(0,0,0,0.04)",
-    borderRadius: "50%",
-    padding: "8px",
-    color: "#1a1a1a",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-    userSelect: "none",
-    WebkitUserSelect: "none",
-    touchAction: "manipulation",
-    willChange: "transform",
-  };
-
-  const desktopPanelBtnStyle: React.CSSProperties = {
-    position: "absolute",
-    top: 8,
-    left: 12,
-    zIndex: 25,
-    background: "#fdf6f0",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    border: "1px solid rgba(0,0,0,0.04)",
-    borderRadius: "50%",
-    padding: "8px",
-    color: "#1a1a1a",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-    transition: "transform 0.1s ease",
-  };
-
   const sidebarWidth = isMobile ? 0 : (sidebarOpen ? 260 : 0);
+
+  // Style untuk area chat – blur saat panel terbuka di mobile
+  const chatAreaStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    position: "relative",
+    ...(isMobile && sidebarOpen
+      ? {
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          background: "rgba(0,0,0,0.05)",
+          transition: "backdrop-filter 0.3s ease, background 0.3s ease",
+        }
+      : {
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+          background: "transparent",
+          transition: "backdrop-filter 0.3s ease, background 0.3s ease",
+        }),
+  };
+
+  // Header style – tetap terlihat dengan latar semi-transparan saat panel terbuka
+  const headerStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 56,
+    padding: "0 16px",
+    background: isMobile && sidebarOpen
+      ? "rgba(253, 246, 240, 0.85)"   // latar krem semi-transparan agar header tetap terlihat
+      : "linear-gradient(to bottom, #fdf6f0 0%, #fdf6f0 60%, rgba(253, 246, 240, 0) 100%)",
+    backdropFilter: isMobile && sidebarOpen ? "blur(12px)" : "none",
+    WebkitBackdropFilter: isMobile && sidebarOpen ? "blur(12px)" : "none",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    maskImage: "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+    WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+    transition: "background 0.3s ease, backdrop-filter 0.3s ease",
+  };
+
+  const iconColor = "#1a1a1a";
+
+  const getHeaderBtnStyle = (btnId: string): React.CSSProperties => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    border: "none",
+    background: pressedBtn === btnId
+      ? "rgba(0,0,0,0.06)"
+      : "transparent",
+    color: iconColor,
+    cursor: "pointer",
+    transform: pressedBtn === btnId ? "scale(0.9)" : "scale(1)",
+    transition: "transform 0.15s ease, background 0.15s ease, color 0.3s ease",
+    boxShadow: "none",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  });
 
   return (
     <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
       
-      {isMobile && (
-        <button
-          onClick={() => {
-            const opening = !sidebarOpen;
-            setSidebarOpen(opening);
-            if (opening) {
-              document.dispatchEvent(new CustomEvent("closeActionBoard"));
-            }
-          }}
-          onMouseDown={() => setPressedBtn("hamburger")}
-          onMouseUp={() => setPressedBtn(null)}
-          onMouseLeave={() => setPressedBtn(null)}
-          onTouchStart={() => setPressedBtn("hamburger")}
-          onTouchEnd={() => setPressedBtn(null)}
-          onTouchCancel={() => setPressedBtn(null)}
-          style={{
-            ...floatingBtnBase,
-            top: 8,
-            left: 12,
-            ...getPressStyle("hamburger"),
-          }}
-        >
-          <HamburgerIcon />
-        </button>
-      )}
-      
-      <button
-        onClick={handleNewChat}
-        onMouseDown={() => setPressedBtn("newchat")}
-        onMouseUp={() => setPressedBtn(null)}
-        onMouseLeave={() => setPressedBtn(null)}
-        onTouchStart={() => setPressedBtn("newchat")}
-        onTouchEnd={() => setPressedBtn(null)}
-        onTouchCancel={() => setPressedBtn(null)}
-        style={{
-          ...floatingBtnBase,
-          top: 8,
-          right: 12,
-          ...getPressStyle("newchat"),
-        }}
-      >
-        <NewChatIcon />
-      </button>
-
       {isMobile && (
         <div
           onClick={closeSidebar}
@@ -260,15 +232,61 @@ export const ChatPageMain: React.FC = () => {
         )}
       </div>
       
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        {!isMobile && (
-          <button
-            onClick={() => setSidebarOpen(prev => !prev)}
-            style={desktopPanelBtnStyle}
-          >
-            {sidebarOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
-          </button>
-        )}
+      {/* Area chat – diburamkan saat panel terbuka di mobile */}
+      <div style={chatAreaStyle}>
+        {/* Header terintegrasi – tetap terlihat dengan latar semi-transparan */}
+        <div style={headerStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {isMobile ? (
+              <button
+                onClick={() => {
+                  const opening = !sidebarOpen;
+                  setSidebarOpen(opening);
+                  if (opening) {
+                    document.dispatchEvent(new CustomEvent("closeActionBoard"));
+                  }
+                }}
+                onMouseDown={() => setPressedBtn("hamburger")}
+                onMouseUp={() => setPressedBtn(null)}
+                onMouseLeave={() => setPressedBtn(null)}
+                onTouchStart={() => setPressedBtn("hamburger")}
+                onTouchEnd={() => setPressedBtn(null)}
+                onTouchCancel={() => setPressedBtn(null)}
+                style={getHeaderBtnStyle("hamburger")}
+              >
+                <HamburgerIcon />
+              </button>
+            ) : (
+              <button
+                onClick={() => setSidebarOpen(prev => !prev)}
+                onMouseDown={() => setPressedBtn("panel")}
+                onMouseUp={() => setPressedBtn(null)}
+                onMouseLeave={() => setPressedBtn(null)}
+                onTouchStart={() => setPressedBtn("panel")}
+                onTouchEnd={() => setPressedBtn(null)}
+                onTouchCancel={() => setPressedBtn(null)}
+                style={getHeaderBtnStyle("panel")}
+              >
+                {sidebarOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={handleNewChat}
+              onMouseDown={() => setPressedBtn("newchat")}
+              onMouseUp={() => setPressedBtn(null)}
+              onMouseLeave={() => setPressedBtn(null)}
+              onTouchStart={() => setPressedBtn("newchat")}
+              onTouchEnd={() => setPressedBtn(null)}
+              onTouchCancel={() => setPressedBtn(null)}
+              style={getHeaderBtnStyle("newchat")}
+            >
+              <NewChatIcon />
+            </button>
+          </div>
+        </div>
         
         <ChatSessionContainer isDesktop={!isMobile} sidebarWidth={sidebarWidth} />
       </div>
