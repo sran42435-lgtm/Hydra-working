@@ -119,7 +119,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.3)",
         border: isEditing ? "1px solid rgba(224,123,90,0.35)" : "1px solid rgba(0,0,0,0.04)",
         padding: isEditing ? "12px 18px 0 18px" : "0 18px",
         minHeight: 60,
