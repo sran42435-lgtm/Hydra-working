@@ -1,14 +1,34 @@
 // frontend/src/hooks/useAutoScroll.ts
-import { useEffect, useRef, useCallback, useState } from "react";
+
+import {
+  useEffect,
+  useRef,
+  useCallback,
+  useState,
+} from "react";
+import { useIsSystemOverlayOpen } from "./useIsSystemOverlayOpen";   // ← proteksi overlay
 
 interface UseAutoScrollOptions {
-  /** Threshold (px) untuk mendeteksi user dekat bawah */
+  /**
+   * Threshold (px)
+   * untuk mendeteksi user dekat bawah
+   */
   nearBottomThreshold?: number;
-  /** Apakah streaming/pesan baru sedang aktif? */
+
+  /**
+   * Apakah streaming / pesan baru aktif
+   */
   isLoading?: boolean;
-  /** Ketergantungan yang memicu autoscroll (biasanya jumlah/length pesan) */
+
+  /**
+   * Dependency pemicu autoscroll
+   * biasanya messages.length
+   */
   dependency: unknown;
-  /** Delay (ms) untuk mereset status scrolling */
+
+  /**
+   * Delay reset status scrolling
+   */
   scrollEndDelay?: number;
 }
 
@@ -18,59 +38,154 @@ export function useAutoScroll({
   dependency,
   scrollEndDelay = 150,
 }: UseAutoScrollOptions) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef =
+    useRef<HTMLDivElement>(null);
+
+  const bottomRef =
+    useRef<HTMLDivElement>(null);
+
   const tickingRef = useRef(false);
-  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollEndTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null
+    );
 
-  // Deteksi posisi scroll – throttled via rAF
+  const [isAtBottom, setIsAtBottom] =
+    useState(true);
+
+  const [isScrolling, setIsScrolling] =
+    useState(false);
+
+  // ✅ Pantau apakah system overlay (share sheet, dll.) sedang terbuka
+  const isSystemOverlayOpen = useIsSystemOverlayOpen();
+
+  /**
+   * Deteksi posisi scroll
+   * throttled via requestAnimationFrame
+   */
   const handleScroll = useCallback(() => {
-    if (tickingRef.current) return;
+    // 🛡️ Jangan proses scroll jika system overlay terbuka
+    if (isSystemOverlayOpen) {
+      return;
+    }
+
+    if (tickingRef.current) {
+      return;
+    }
+
     tickingRef.current = true;
+
     requestAnimationFrame(() => {
       const container = containerRef.current;
+
       if (!container) {
         tickingRef.current = false;
         return;
       }
+
+      const distanceFromBottom =
+        container.scrollHeight -
+        container.scrollTop -
+        container.clientHeight;
+
       const atBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight < nearBottomThreshold;
+        distanceFromBottom <
+        nearBottomThreshold;
+
       setIsAtBottom(atBottom);
 
+      /**
+       * User sedang scrolling
+       */
       setIsScrolling(true);
-      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+
+      if (scrollEndTimerRef.current) {
+        clearTimeout(scrollEndTimerRef.current);
+      }
+
       scrollEndTimerRef.current = setTimeout(() => {
         setIsScrolling(false);
       }, scrollEndDelay);
 
       tickingRef.current = false;
     });
-  }, [nearBottomThreshold, scrollEndDelay]);
+  }, [
+    nearBottomThreshold,
+    scrollEndDelay,
+    isSystemOverlayOpen,   // ← tambahkan dependency
+  ]);
 
+  /**
+   * Attach scroll listener
+   */
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
-    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    if (!container) {
+      return;
+    }
+
+    container.addEventListener(
+      "scroll",
+      handleScroll,
+      { passive: true }
+    );
+
     return () => {
-      container.removeEventListener("scroll", handleScroll);
-      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+      container.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+
+      if (scrollEndTimerRef.current) {
+        clearTimeout(
+          scrollEndTimerRef.current
+        );
+      }
     };
   }, [handleScroll]);
 
-  // Autoscroll saat dependency berubah, jika user di bawah (atau loading baru)
+  /**
+   * Auto scroll saat:
+   * - loading aktif
+   * - user masih dekat bawah
+   *
+   * 🛡️ Kecuali jika system overlay sedang terbuka
+   */
   useEffect(() => {
-    if (isLoading || isAtBottom) {
-      const behavior: ScrollBehavior = isLoading ? "auto" : "smooth";
-      bottomRef.current?.scrollIntoView({ behavior });
+    if (isSystemOverlayOpen) {
+      return;
     }
-  }, [dependency, isLoading, isAtBottom]);
 
+    if (isLoading || isAtBottom) {
+      const behavior: ScrollBehavior =
+        isLoading ? "auto" : "smooth";
+
+      bottomRef.current?.scrollIntoView({
+        behavior,
+      });
+    }
+  }, [
+    dependency,
+    isLoading,
+    isAtBottom,
+    isSystemOverlayOpen,   // ← tambahkan dependency
+  ]);
+
+  /**
+   * Manual scroll ke bawah
+   * 🛡️ Dibatalkan jika system overlay terbuka
+   */
   const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+    if (isSystemOverlayOpen) {
+      return;
+    }
+
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [isSystemOverlayOpen]);   // ← tambahkan dependency
 
   return {
     containerRef,

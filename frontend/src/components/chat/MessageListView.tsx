@@ -14,6 +14,8 @@ import { ThinkingBubble } from "./ThinkingBubble";
 import { AIMessageSheet } from "./AIMessageSheet";
 import { MessageBubbleView } from "./MessageBubbleView";
 import { useAutoScroll } from "../../hooks/useAutoScroll";
+import { useShare } from "../../hooks/useShare";
+import { ShareSheet } from "./ShareSheet";
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -67,6 +69,16 @@ const ScrollTextIcon = () => (
     <path d="M15 8h-5" />
     <path d="M19 17V5a2 2 0 0 0-2-2H4" />
     <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
+  </svg>
+);
+
+const ShareIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="18" cy="5" r="3"/>
+    <circle cx="6" cy="12" r="3"/>
+    <circle cx="18" cy="19" r="3"/>
+    <line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/>
+    <line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>
   </svg>
 );
 
@@ -141,7 +153,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
   const deferredMessages = useDeferredValue(messages);
 
-  // ---- AUTOSCROLL ENGINE DIPISAH ----
   const {
     containerRef: scrollContainerRef,
     bottomRef,
@@ -169,6 +180,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [selectedAiContent, setSelectedAiContent] = useState<string>("");
   const [pressedAiId, setPressedAiId] = useState<string | null>(null);
   const [pressedUserId, setPressedUserId] = useState<string | null>(null);
+
+  // ---- SHARE STATE & HOOK ----
+  const [shareTarget, setShareTarget] = useState<{ content: string; userPrompt?: string } | null>(null);
+  const [sharePos, setSharePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const { shareExternally, copyShareText, exportMarkdown } = useShare();
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
   const [isDraggingBoard, setIsDraggingBoard] = useState(false);
@@ -313,6 +329,16 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const handleOpenSheet = useCallback((content: string) => {
     setSelectedAiContent(content);
+  }, []);
+
+  // ---- SHARE HANDLER (dengan koordinat) ----
+  const handleOpenShare = useCallback((content: string, userPrompt: string | undefined, clientX: number, clientY: number) => {
+    setShareTarget({ content, userPrompt });
+    setSharePos({ x: clientX, y: clientY + 70 });  // offset agar tidak ketutupan jari
+  }, []);
+
+  const handleCloseShare = useCallback(() => {
+    setShareTarget(null);
   }, []);
 
   const openBoard = (msgId: string, clientX: number, clientY: number) => {
@@ -482,7 +508,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       style={{
         flex: 1,
         overflowY: "auto",
-        scrollbarGutter: "stable",   // tetap jaga lebar stabil
+        scrollbarGutter: "stable",
         padding: `60px 16px ${110 + extraBottomPadding}px`,
         backgroundColor: chatBg,
         position: "relative",
@@ -622,7 +648,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start",
-                // HAPUS contentVisibility & containIntrinsicSize (berbahaya utk live chat)
               }}
             >
               <div
@@ -777,6 +802,30 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                       aria-label="Buka teks"
                     >
                       <ScrollTextIcon />
+                    </button>
+                    {/* TOMBOL SHARE – kirim koordinat */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const userPrompt = prevMsg?.role === 'user' ? prevMsg.content : undefined;
+                        handleOpenShare(cleanContent, userPrompt, e.clientX, e.clientY);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 8,
+                        border: "none",
+                        borderRadius: 6,
+                        backgroundColor: "transparent",
+                        color: "#999",
+                        cursor: "pointer",
+                        transition: "color 0.15s ease",
+                      }}
+                      aria-label="Bagikan"
+                    >
+                      <ShareIcon />
                     </button>
                   </div>
                 </div>
@@ -1066,6 +1115,20 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
           onClose={() => setSelectedAiContent("")}
           isDesktop={isDesktop}
           sidebarWidth={sidebarWidth ?? (isDesktop ? 260 : 0)}
+        />
+      )}
+
+      {/* SHARE SHEET (dengan posisi & animasi seperti action board) */}
+      {shareTarget && (
+        <ShareSheet
+          x={sharePos.x}
+          y={sharePos.y}
+          content={shareTarget.content}
+          userPrompt={shareTarget.userPrompt}
+          onClose={handleCloseShare}
+          onShareExternal={() => shareExternally(shareTarget.content, shareTarget.userPrompt)}
+          onCopyText={() => copyShareText(shareTarget.content, shareTarget.userPrompt)}
+          onExportMarkdown={() => exportMarkdown(shareTarget.content, shareTarget.userPrompt)}
         />
       )}
     </div>
