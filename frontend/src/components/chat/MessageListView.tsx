@@ -1,3 +1,5 @@
+// frontend/src/components/chat/MessageListView.tsx
+
 import React, {
   useEffect,
   useState,
@@ -11,6 +13,7 @@ import { HydraIcon } from "../ui/HydraIcon";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { AIMessageSheet } from "./AIMessageSheet";
 import { MessageBubbleView } from "./MessageBubbleView";
+import { useAutoScroll } from "../../hooks/useAutoScroll";
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -135,23 +138,28 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const [streamingAiId, setStreamingAiId] = useState<string | null>(
     chatStore.getState().streamingAiId
   );
-
   const [messages, setMessages] = useState<Message[]>(chatStore.getState().messages);
   const deferredMessages = useDeferredValue(messages);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ---- AUTOSCROLL ENGINE DIPISAH ----
+  const {
+    containerRef: scrollContainerRef,
+    bottomRef,
+    isAtBottom,
+    isScrolling,
+    scrollToBottom,
+  } = useAutoScroll({
+    isLoading,
+    dependency: deferredMessages.length,
+    nearBottomThreshold: 50,
+    scrollEndDelay: 150,
+  });
+
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shrinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFiredRef = useRef<boolean>(false);
   const longPressTargetRef = useRef<string | null>(null);
-
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const isScrollingRef = useRef(false);
-  const tickingRef = useRef(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionBoardId, setActionBoardId] = useState<string | null>(null);
@@ -239,56 +247,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     });
   }, [mergedMessages]);
 
-  const handleScroll = useCallback(() => {
-    if (tickingRef.current) return;
-    tickingRef.current = true;
-    requestAnimationFrame(() => {
-      const container = scrollContainerRef.current;
-      if (!container) {
-        tickingRef.current = false;
-        return;
-      }
-      const threshold = 50;
-      const atBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
-      setIsAtBottom(atBottom);
-
-      if (!isScrollingRef.current) {
-        isScrollingRef.current = true;
-        setIsScrolling(true);
-      }
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-      scrollTimerRef.current = setTimeout(() => {
-        isScrollingRef.current = false;
-        setIsScrolling(false);
-      }, 0);
-
-      tickingRef.current = false;
-    });
-  }, []);
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    };
-  }, [handleScroll]);
-
   useEffect(() => {
     if (isScrolling) setActionBoardId(null);
   }, [isScrolling]);
-
-  useEffect(() => {
-    const behavior: ScrollBehavior = isLoading ? "auto" : "smooth";
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, [mergedMessages, isLoading]);
-
-  const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -329,13 +290,11 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setActionBoardId(null);
   };
 
-  // Retry dari papan aksi – langsung, tanpa animasi
   const handleRetry = (text: string, msgId: string) => {
     onRetryMessage?.(text, msgId);
     setActionBoardId(null);
   };
 
-  // Retry dari ikon di sebelah kiri bubble – dengan animasi spin
   const handleRetryWithSpin = (text: string, msgId: string) => {
     setSpinningRetryId(msgId);
     setTimeout(() => {
@@ -487,7 +446,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     backgroundColor: "rgba(120, 113, 108, 0.42)",
   };
 
-  // Timer & state untuk long press user bubble (sheet)
   const userLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userLongPressFiredRef = useRef<boolean>(false);
 
@@ -524,6 +482,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
       style={{
         flex: 1,
         overflowY: "auto",
+        scrollbarGutter: "stable",   // tetap jaga lebar stabil
         padding: `60px 16px ${110 + extraBottomPadding}px`,
         backgroundColor: chatBg,
         position: "relative",
@@ -663,8 +622,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "flex-start",
-                contentVisibility: "auto",
-                containIntrinsicSize: "400px",
+                // HAPUS contentVisibility & containIntrinsicSize (berbahaya utk live chat)
               }}
             >
               <div
@@ -856,7 +814,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRetryWithSpin(msg.content, msg.id);   // ← animasi spin
+                    handleRetryWithSpin(msg.content, msg.id);
                   }}
                   style={{
                     display: "flex",
@@ -877,7 +835,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 </button>
               )}
 
-              {/* Wrapper bubble pengguna */}
               <div
                 onTouchStart={(e) => {
                   e.preventDefault();
@@ -915,7 +872,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               </div>
             </div>
 
-            {/* Action board */}
             {isActionOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -1062,7 +1018,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRetry(msg.content, msg.id);     // ← tanpa spin
+                    handleRetry(msg.content, msg.id);
                   }}
                   style={{
                     width: "100%",

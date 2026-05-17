@@ -1,9 +1,9 @@
-// src/pages/ChatPage/ChatPageMain.tsx
+// frontend/src/pages/ChatPage/ChatPageMain.tsx
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import ChatPageSidebar from "./ChatPageSidebar";
-import { ChatSessionContainer } from "../../components/chat/ChatSessionContainer";
-import { chatStore } from "../../store/chat_state_store";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ChatPageSidebar from './ChatPageSidebar';
+import { ChatSessionContainer } from '../../components/chat/ChatSessionContainer';
+import { chatStore } from '../../store/chat_state_store';
 
 const HamburgerIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -54,8 +54,8 @@ export const ChatPageMain: React.FC = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
     };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
@@ -97,116 +97,112 @@ export const ChatPageMain: React.FC = () => {
   const closeSidebar = () => setSidebarOpen(false);
 
   const getWrapperStyle = (): React.CSSProperties => ({
-    height: "100%",
-    position: isMobile ? "fixed" : "relative",
+    height: '100%',
+    position: isMobile ? 'fixed' : 'relative',
     left: 0,
     top: 0,
     bottom: 0,
     zIndex: 20,
-    overflow: "hidden",
-    width: isMobile ? "100vw" : 260,
+    overflow: 'hidden',
+    width: isMobile ? '100vw' : 260,
     transition: isDragging
-      ? "none"
-      : "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+      ? 'none'
+      : 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
     transform: isMobile
       ? sidebarOpen
         ? isDragging
           ? `translateX(${dragOffset}px)`
-          : "translateX(0)"
-        : "translateX(-100%)"
-      : "translateX(0)",
+          : 'translateX(0)'
+        : 'translateX(-100%)'
+      : 'translateX(0)',
     opacity: sidebarOpen || isMobile ? 1 : 0,
-    pointerEvents: sidebarOpen ? "auto" : "none",
+    pointerEvents: sidebarOpen ? 'auto' : 'none',
   });
 
   const getDesktopPanelStyle = (): React.CSSProperties => ({
     width: sidebarOpen ? 260 : 0,
-    transition: "width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
-    overflow: "hidden",
+    transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+    overflow: 'hidden',
     opacity: sidebarOpen ? 1 : 0,
   });
 
   const sidebarWidth = isMobile ? 0 : (sidebarOpen ? 260 : 0);
 
-  // Style untuk area chat – blur saat panel terbuka di mobile
   const chatAreaStyle: React.CSSProperties = {
     flex: 1,
     minWidth: 0,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    position: "relative",
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    position: 'relative',
     ...(isMobile && sidebarOpen
       ? {
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
-          background: "rgba(0,0,0,0.05)",
-          transition: "backdrop-filter 0.3s ease, background 0.3s ease",
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          background: 'rgba(0,0,0,0.05)',
+          transition: 'backdrop-filter 0.3s ease, background 0.3s ease',
         }
       : {
-          backdropFilter: "none",
-          WebkitBackdropFilter: "none",
-          background: "transparent",
-          transition: "backdrop-filter 0.3s ease, background 0.3s ease",
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          background: 'transparent',
+          transition: 'backdrop-filter 0.3s ease, background 0.3s ease',
         }),
   };
 
-  // Header style – tetap terlihat dengan latar semi-transparan saat panel terbuka
   const headerStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     height: 56,
-    padding: "0 16px",
+    padding: '0 16px',
     background: isMobile && sidebarOpen
-      ? "rgba(253, 246, 240, 0.85)"   // latar krem semi-transparan agar header tetap terlihat
-      : "linear-gradient(to bottom, #fdf6f0 0%, #fdf6f0 60%, rgba(253, 246, 240, 0) 100%)",
-    backdropFilter: isMobile && sidebarOpen ? "blur(12px)" : "none",
-    WebkitBackdropFilter: isMobile && sidebarOpen ? "blur(12px)" : "none",
-    position: "absolute",
+      ? 'rgba(253, 246, 240, 0.85)'
+      : 'linear-gradient(to bottom, #fdf6f0 0%, #fdf6f0 60%, rgba(253, 246, 240, 0) 100%)',
+    backdropFilter: isMobile && sidebarOpen ? 'blur(12px)' : 'none',
+    WebkitBackdropFilter: isMobile && sidebarOpen ? 'blur(12px)' : 'none',
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    maskImage: "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-    WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-    transition: "background 0.3s ease, backdrop-filter 0.3s ease",
+    maskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
+    WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
+    transition: 'background 0.3s ease, backdrop-filter 0.3s ease',
   };
 
-  const iconColor = "#1a1a1a";
+  const iconColor = '#1a1a1a';
 
   const getHeaderBtnStyle = (btnId: string): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: 40,
     height: 40,
-    borderRadius: "50%",
-    border: "none",
-    background: pressedBtn === btnId
-      ? "rgba(0,0,0,0.06)"
-      : "transparent",
+    borderRadius: '50%',
+    border: 'none',
+    background: pressedBtn === btnId ? 'rgba(0,0,0,0.06)' : 'transparent',
     color: iconColor,
-    cursor: "pointer",
-    transform: pressedBtn === btnId ? "scale(0.9)" : "scale(1)",
-    transition: "transform 0.15s ease, background 0.15s ease, color 0.3s ease",
-    boxShadow: "none",
-    outline: "none",
-    WebkitTapHighlightColor: "transparent",
+    cursor: 'pointer',
+    transform: pressedBtn === btnId ? 'scale(0.9)' : 'scale(1)',
+    transition: 'transform 0.15s ease, background 0.15s ease, color 0.3s ease',
+    boxShadow: 'none',
+    outline: 'none',
+    WebkitTapHighlightColor: 'transparent',
   });
 
   return (
-    <div style={{ display: "flex", height: "100dvh", width: "100vw", maxWidth: "100%", overflow: "hidden", backgroundColor: "#fafafa", position: "relative" }}>
+    <div style={{ display: 'flex', height: '100dvh', width: '100vw', maxWidth: '100%', overflow: 'hidden', backgroundColor: '#fafafa', position: 'relative' }}>
       
       {isMobile && (
         <div
           onClick={closeSidebar}
           style={{
-            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.3)", zIndex: 10,
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', zIndex: 10,
             opacity: sidebarOpen ? 1 : 0,
-            visibility: sidebarOpen ? "visible" : "hidden",
-            transition: "opacity 0.3s ease, visibility 0.3s ease",
-            pointerEvents: sidebarOpen ? "auto" : "none",
+            visibility: sidebarOpen ? 'visible' : 'hidden',
+            transition: 'opacity 0.3s ease, visibility 0.3s ease',
+            pointerEvents: sidebarOpen ? 'auto' : 'none',
           }}
         />
       )}
@@ -222,7 +218,7 @@ export const ChatPageMain: React.FC = () => {
             onDragEnd={handleDragEnd}
           />
         ) : (
-          <div style={{ width: 260, height: "100%" }}>
+          <div style={{ width: 260, height: '100%' }}>
             <ChatPageSidebar
               onNewChat={handleNewChat}
               isMobile={isMobile}
@@ -232,56 +228,54 @@ export const ChatPageMain: React.FC = () => {
         )}
       </div>
       
-      {/* Area chat – diburamkan saat panel terbuka di mobile */}
       <div style={chatAreaStyle}>
-        {/* Header terintegrasi – tetap terlihat dengan latar semi-transparan */}
         <div style={headerStyle}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isMobile ? (
               <button
                 onClick={() => {
                   const opening = !sidebarOpen;
                   setSidebarOpen(opening);
                   if (opening) {
-                    document.dispatchEvent(new CustomEvent("closeActionBoard"));
+                    document.dispatchEvent(new CustomEvent('closeActionBoard'));
                   }
                 }}
-                onMouseDown={() => setPressedBtn("hamburger")}
+                onMouseDown={() => setPressedBtn('hamburger')}
                 onMouseUp={() => setPressedBtn(null)}
                 onMouseLeave={() => setPressedBtn(null)}
-                onTouchStart={() => setPressedBtn("hamburger")}
+                onTouchStart={() => setPressedBtn('hamburger')}
                 onTouchEnd={() => setPressedBtn(null)}
                 onTouchCancel={() => setPressedBtn(null)}
-                style={getHeaderBtnStyle("hamburger")}
+                style={getHeaderBtnStyle('hamburger')}
               >
                 <HamburgerIcon />
               </button>
             ) : (
               <button
                 onClick={() => setSidebarOpen(prev => !prev)}
-                onMouseDown={() => setPressedBtn("panel")}
+                onMouseDown={() => setPressedBtn('panel')}
                 onMouseUp={() => setPressedBtn(null)}
                 onMouseLeave={() => setPressedBtn(null)}
-                onTouchStart={() => setPressedBtn("panel")}
+                onTouchStart={() => setPressedBtn('panel')}
                 onTouchEnd={() => setPressedBtn(null)}
                 onTouchCancel={() => setPressedBtn(null)}
-                style={getHeaderBtnStyle("panel")}
+                style={getHeaderBtnStyle('panel')}
               >
                 {sidebarOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
               </button>
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={handleNewChat}
-              onMouseDown={() => setPressedBtn("newchat")}
+              onMouseDown={() => setPressedBtn('newchat')}
               onMouseUp={() => setPressedBtn(null)}
               onMouseLeave={() => setPressedBtn(null)}
-              onTouchStart={() => setPressedBtn("newchat")}
+              onTouchStart={() => setPressedBtn('newchat')}
               onTouchEnd={() => setPressedBtn(null)}
               onTouchCancel={() => setPressedBtn(null)}
-              style={getHeaderBtnStyle("newchat")}
+              style={getHeaderBtnStyle('newchat')}
             >
               <NewChatIcon />
             </button>
