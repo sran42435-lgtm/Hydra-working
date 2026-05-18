@@ -16,6 +16,7 @@ import { MessageBubbleView } from "./MessageBubbleView";
 import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { useShare } from "../../hooks/useShare";
 import { ShareSheet } from "./ShareSheet";
+import { ActionBoard } from "./ActionBoard";   // ← import papan aksi
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -331,10 +332,9 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setSelectedAiContent(content);
   }, []);
 
-  // ---- SHARE HANDLER (dengan koordinat) ----
   const handleOpenShare = useCallback((content: string, userPrompt: string | undefined, clientX: number, clientY: number) => {
     setShareTarget({ content, userPrompt });
-    setSharePos({ x: clientX, y: clientY + 70 });  // offset agar tidak ketutupan jari
+    setSharePos({ x: clientX, y: clientY + 70 });
   }, []);
 
   const handleCloseShare = useCallback(() => {
@@ -434,23 +434,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     zIndex: 6,
     transform: "translateX(-50%) scale(1)",
     animation: "scaleIn 0.25s ease forwards",
-  };
-
-  const ACTION_BOARD_BASE_STYLE: React.CSSProperties = {
-    position: "fixed",
-    minWidth: 180,
-    backgroundColor: "#fdf6f0",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    borderRadius: 14,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-    border: "1px solid rgba(0,0,0,0.04)",
-    padding: "0 0 4px 0",
-    zIndex: 21,
-    cursor: "default",
-    userSelect: "none",
-    WebkitUserSelect: "none",
-    touchAction: "none",
   };
 
   const HANDLE_STYLE: React.CSSProperties = {
@@ -803,7 +786,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                     >
                       <ScrollTextIcon />
                     </button>
-                    {/* TOMBOL SHARE – kirim koordinat */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -921,180 +903,40 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               </div>
             </div>
 
+            {/* =============== PAPAN AKSI SEKARANG DI KOMPONEN TERPISAH =============== */}
             {isActionOpen && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                onTouchStart={() => setIsBoardPressed(true)}
-                onTouchEnd={() => setIsBoardPressed(false)}
-                onTouchCancel={() => setIsBoardPressed(false)}
-                onMouseDown={() => setIsBoardPressed(true)}
-                onMouseUp={() => setIsBoardPressed(false)}
-                onMouseLeave={() => setIsBoardPressed(false)}
-                style={{
-                  ...ACTION_BOARD_BASE_STYLE,
-                  left: boardPos.x,
-                  top: boardPos.y,
-                  transform: `translate(-50%, -50%) scale(${boardActiveScale})`,
-                  transition: "transform 0.15s ease",
-                  animation: boardAnimation,
-                  opacity: isDraggingBoard || isBoardPressed ? 1 : undefined,
+              <ActionBoard
+                x={boardPos.x}
+                y={boardPos.y}
+                content={msg.content}
+                messageId={msg.id}
+                boardActiveScale={boardActiveScale}
+                boardAnimation={boardAnimation}
+                isDraggingBoard={isDraggingBoard}
+                isBoardPressed={isBoardPressed}
+                handleStyle={HANDLE_STYLE}
+                handlePillStyle={HANDLE_PILL_STYLE}
+                onDragStart={(e) => {
+                  const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+                  const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+                  setTarget(clientX, clientY);
+                  startDrag();
+                  setIsDraggingBoard(true);
                 }}
-              >
-                <div
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    const touch = e.touches[0];
-                    setTarget(touch.clientX, touch.clientY);
-                    startDrag();
-                    setIsDraggingBoard(true);
-                  }}
-                  onTouchMove={(e) => {
-                    if (!isDraggingBoard) return;
-                    const touch = e.touches[0];
-                    setTarget(touch.clientX, touch.clientY);
-                  }}
-                  onTouchEnd={() => {
-                    stopDrag();
-                    setIsDraggingBoard(false);
-                  }}
-                  onTouchCancel={() => {
-                    stopDrag();
-                    setIsDraggingBoard(false);
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setTarget(e.clientX, e.clientY);
-                    startDrag();
-                    setIsDraggingBoard(true);
-                  }}
-                  onMouseMove={(e) => {
-                    if (!isDraggingBoard) return;
-                    setTarget(e.clientX, e.clientY);
-                  }}
-                  onMouseUp={() => {
-                    stopDrag();
-                    setIsDraggingBoard(false);
-                  }}
-                  onMouseLeave={() => {
-                    stopDrag();
-                    setIsDraggingBoard(false);
-                  }}
-                  style={{
-                    ...HANDLE_STYLE,
-                    cursor: isDraggingBoard ? "grabbing" : "grab",
-                  }}
-                >
-                  <div style={HANDLE_PILL_STYLE} />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCopy(msg.content, msg.id);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 14px",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    color: "#1a1a1a",
-                    fontFamily: chatFont,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "background-color 0.1s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <span>Copy message</span>
-                  <ClipboardIcon />
-                </button>
-
-                <div style={{
-                  height: 1,
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  margin: "2px 0",
-                }} />
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(msg.content, msg.id);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 14px",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    color: "#1a1a1a",
-                    fontFamily: chatFont,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "background-color 0.1s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <span>Edit</span>
-                  <PencilLineIcon />
-                </button>
-
-                <div style={{
-                  height: 1,
-                  backgroundColor: "rgba(0,0,0,0.05)",
-                  margin: "2px 0",
-                }} />
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRetry(msg.content, msg.id);
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "10px 14px",
-                    border: "none",
-                    backgroundColor: "transparent",
-                    color: "#1a1a1a",
-                    fontFamily: chatFont,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "background-color 0.1s ease",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.03)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <span>Retry</span>
-                  <RetryIcon />
-                </button>
-              </div>
+                onDragMove={(e) => {
+                  if (!isDraggingBoard) return;
+                  const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+                  const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+                  setTarget(clientX, clientY);
+                }}
+                onDragEnd={() => {
+                  stopDrag();
+                  setIsDraggingBoard(false);
+                }}
+                onCopy={handleCopy}
+                onEdit={handleEdit}
+                onRetry={handleRetry}
+              />
             )}
           </div>
         );
@@ -1118,7 +960,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
         />
       )}
 
-      {/* SHARE SHEET (dengan posisi & animasi seperti action board) */}
       {shareTarget && (
         <ShareSheet
           x={sharePos.x}
