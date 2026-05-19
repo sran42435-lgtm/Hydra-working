@@ -1,6 +1,6 @@
 // frontend/src/components/chat/ChatInputBar.tsx
 
-import React, { useRef, useState, useLayoutEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 
 interface ChatInputBarProps {
   text: string;
@@ -48,6 +48,18 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isComposing, setIsComposing] = useState(false);
+  const [dots, setDots] = useState(3);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setDots(3);
+      return;
+    }
+    const interval = setInterval(() => {
+      setDots((prev) => (prev === 3 ? 1 : prev === 1 ? 2 : 3));
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -89,12 +101,6 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
 
   const isSendDisabled = disabled || isLoading || !text.trim();
 
-  const placeholder = (text.length > 0 || isComposing)
-    ? ""
-    : isLoading
-      ? "AI sedang merespons..."
-      : "Ketik pesan...";
-
   const chatFont = "'Literata', serif";
 
   const buttonBg = isLoading
@@ -102,6 +108,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     : isSendDisabled
       ? INACTIVE_COLOR
       : ACTIVE_COLOR;
+
+  const loadingPlaceholder = `AI sedang merespons${".".repeat(dots)}`;
+  const showPlaceholder = text.length === 0 && !isComposing;
+
+  // Posisi overlay disesuaikan dengan padding
+  const overlayTop = isEditing ? 20 : 12;   // 12 (container) + 8 (textarea) saat edit, 12 saat normal
 
   return (
     <div style={{
@@ -111,6 +123,13 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
       alignItems: "center",
       backgroundColor: "transparent",
     }}>
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: -200px 0; }
+          100% { background-position: calc(200px + 100%) 0; }
+        }
+      `}</style>
+
       <div style={{
         width: "100%",
         position: "relative",
@@ -187,12 +206,65 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           </>
         )}
 
+        {/* Overlay placeholder dengan shimmer dan titik animasi */}
+        {showPlaceholder && isLoading && (
+          <div
+            style={{
+              position: "absolute",
+              top: overlayTop,
+              left: 18,
+              right: 50,
+              pointerEvents: "none",
+              fontFamily: chatFont,
+              fontSize: 20,
+              fontWeight: 700,
+              lineHeight: 1.45,
+              letterSpacing: "-0.01em",
+              color: "transparent",
+              backgroundImage: "linear-gradient(90deg, #b0b0b0 25%, #e0e0e0 50%, #b0b0b0 75%)",
+              backgroundSize: "200px 100%",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              animation: "shimmer 2s infinite linear",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {loadingPlaceholder}
+          </div>
+        )}
+
+        {/* Placeholder biasa untuk mode normal */}
+        {showPlaceholder && !isLoading && (
+          <div
+            style={{
+              position: "absolute",
+              top: overlayTop,
+              left: 18,
+              right: 50,
+              pointerEvents: "none",
+              fontFamily: chatFont,
+              fontSize: 20,
+              fontWeight: 700,
+              lineHeight: 1.45,
+              letterSpacing: "-0.01em",
+              color: "#b0b0b0",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            Ketik pesan...
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder=""
           disabled={disabled || isLoading}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
@@ -224,9 +296,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             position: "absolute",
             right: 10,
             bottom: 12,
-            width: 36,                   // lebih kecil dari sebelumnya (38)
-            height: 32,                  // lebih rendah
-            borderRadius: 8,             // persegi melengkung di setiap sisi
+            width: 36,
+            height: 32,
+            borderRadius: 8,
             border: "none",
             backgroundColor: buttonBg,
             color: "#fff",

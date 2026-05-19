@@ -455,8 +455,16 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   const userLongPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userLongPressFiredRef = useRef<boolean>(false);
+  const previousOverflowRef = useRef<string | null>(null);
 
   const startUserLongPress = useCallback((msgId: string) => {
+    // Bekukan scroll pada container pesan
+    const container = scrollContainerRef.current;
+    if (container) {
+      previousOverflowRef.current = container.style.overflowY;
+      container.style.overflowY = 'hidden';
+    }
+
     if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
     userLongPressFiredRef.current = false;
     userLongPressTimerRef.current = setTimeout(() => {
@@ -466,6 +474,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, []);
 
   const endUserLongPress = useCallback((msg: Message) => {
+    // Pulihkan scroll
+    const container = scrollContainerRef.current;
+    if (container && previousOverflowRef.current !== null) {
+      container.style.overflowY = previousOverflowRef.current;
+      previousOverflowRef.current = null;
+    }
+
     if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
     if (userLongPressFiredRef.current) {
       setPressedUserId(null);
@@ -474,6 +489,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, [handleOpenSheet]);
 
   const cancelUserLongPress = useCallback(() => {
+    // Pulihkan scroll
+    const container = scrollContainerRef.current;
+    if (container && previousOverflowRef.current !== null) {
+      container.style.overflowY = previousOverflowRef.current;
+      previousOverflowRef.current = null;
+    }
+
     if (userLongPressTimerRef.current) clearTimeout(userLongPressTimerRef.current);
     setPressedUserId(null);
   }, []);
@@ -864,6 +886,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 </button>
               )}
 
+              {/* WRAPPER STABIL – TIDAK ADA TRANSFORM */}
               <div
                 onTouchStart={(e) => {
                   e.preventDefault();
@@ -893,11 +916,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                   maxWidth: "75%",
                   cursor: "pointer",
                   flexShrink: 0,
-                  transform: isUserPressed ? "scale(0.93)" : "scale(1)",
-                  transition: "transform 0.15s ease",
                 }}
               >
-                <MessageBubbleView content={msg.content} isUser />
+                <MessageBubbleView
+                  content={msg.content}
+                  isUser
+                  pressed={isUserPressed}
+                />
               </div>
             </div>
 
