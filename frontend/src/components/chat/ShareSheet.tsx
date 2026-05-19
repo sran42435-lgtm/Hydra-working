@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 
 interface ShareSheetProps {
-  content: string;
+  content: string;               // tidak dipakai untuk tampilan baru, tapi tetap ada
   userPrompt?: string;
   onClose: () => void;
   onShareExternal: () => void;
@@ -14,7 +14,7 @@ interface ShareSheetProps {
 const CLOSE_THRESHOLD = 150;
 const VELOCITY_THRESHOLD = 0.5;
 
-// Ikon untuk tombol fitur
+// Ikon untuk tombol aksi
 const ClipboardIcon = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
@@ -37,6 +37,15 @@ const ExportIcon = () => (
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
     <line x1="12" x2="12" y1="15" y2="3" />
+  </svg>
+);
+
+// Ikon dokumen yang diberikan
+const FileIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="40" height="40">
+    <path fill="#FFF" d="M94.5,112h-61c-5.5,0-10-4.5-10-10V22c0-5.5,4.5-10,10-10h61c5.5,0,10,4.5,10,10v80C104.5,107.5,100,112,94.5,112z"/>
+    <path fill="#C7D7E2" d="M33.5 22H94.5V37H33.5zM88.5 57h-51c-1.7 0-3-1.3-3-3s1.3-3 3-3h51c1.7 0 3 1.3 3 3S90.2 57 88.5 57zM88.5 72h-51c-1.7 0-3-1.3-3-3s1.3-3 3-3h51c1.7 0 3 1.3 3 3S90.2 72 88.5 72zM64 87H37.5c-1.7 0-3-1.3-3-3s1.3-3 3-3H64c1.7 0 3 1.3 3 3S65.7 87 64 87z"/>
+    <path fill="#454B54" d="M94.5,115h-61c-7.2,0-13-5.8-13-13V22c0-7.2,5.8-13,13-13h61c7.2,0,13,5.8,13,13v80C107.5,109.2,101.7,115,94.5,115z M33.5,15c-3.9,0-7,3.1-7,7v80c0,3.9,3.1,7,7,7h61c3.9,0,7-3.1,7-7V22c0-3.9-3.1-7-7-7H33.5z"/>
   </svg>
 );
 
@@ -158,13 +167,6 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
     });
   }, []);
 
-  const chatFont = "'Literata', serif";
-
-  // Warna bubble pengguna dari MessageBubbleView
-  const userBubbleBg = 'rgba(217, 137, 106, 0.74)';
-  const userBubbleBorder = '1px solid rgba(255, 255, 255, 0.28)';
-  const userBubbleTextColor = '#FFF8F4';
-
   return (
     <>
       {/* backdrop */}
@@ -182,7 +184,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
         }}
       />
 
-      {/* sheet */}
+      {/* sheet – tanpa blur, tinggi lebih kecil */}
       <div
         ref={sheetRef}
         style={{
@@ -190,10 +192,9 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
           bottom: 0,
           left: 0,
           right: 0,
-          height: '85vh',
+          height: '45vh',
           backgroundColor: '#fdf6f0',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
+          // backdropFilter dihapus
           borderTopLeftRadius: 36,
           borderTopRightRadius: 36,
           boxShadow: '0 -8px 32px rgba(0,0,0,0.15)',
@@ -201,7 +202,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
           display: 'flex',
           flexDirection: 'column',
           transform: 'translateY(100%)',
-          touchAction: 'pan-y',          // hanya izinkan geser vertikal
+          touchAction: 'pan-y',
         }}
       >
         {/* drag handle */}
@@ -230,159 +231,77 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
           }} />
         </div>
 
-        {/* header blur di atas konten */}
-        <div style={{
-          position: 'absolute',
-          top: 36,
-          left: 0,
-          right: 0,
-          height: 60,
-          background: 'linear-gradient(to bottom, #fdf6f0 0%, #fdf6f0 60%, rgba(253, 246, 240, 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
-          zIndex: 1,
-          pointerEvents: 'none',
-        }} />
-
-        {/* area konten percakapan (scrollable) – teks pengguna diturunkan */}
+        {/* Konten utama */}
         <div style={{
           flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',              // cegah geser horizontal
-          padding: '80px 16px 0 16px',      // atas diperbesar agar teks terlihat
-          fontFamily: chatFont,
-          fontSize: 22,
-          fontWeight: 700,
-          lineHeight: 1.45,
-          letterSpacing: '-0.02em',
-          color: '#1a1a1a',
-        }}>
-          {/* User message – rata kanan */}
-          {userPrompt && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginBottom: 12,
-            }}>
-              <div style={{
-                maxWidth: '80%',
-                textAlign: 'right',
-                padding: '8px 14px',
-                borderRadius: 18,
-                backgroundColor: userBubbleBg,
-                border: userBubbleBorder,
-                color: userBubbleTextColor,
-              }}>
-                {userPrompt}
-              </div>
-            </div>
-          )}
-
-          {/* AI response – rata kiri, tanpa bubble */}
-          <div style={{
-            marginBottom: 24,
-            whiteSpace: 'pre-wrap',
-            overflowWrap: 'break-word',
-          }}>
-            {content}
-          </div>
-        </div>
-
-        {/* Pembatas blur antara area teks dan footer */}
-        <div style={{
-          height: 20,
-          background: 'linear-gradient(to bottom, #fdf6f0 0%, #fdf6f0 60%, rgba(253, 246, 240, 0) 100%)',
-          maskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 70%, transparent 100%)',
-          flexShrink: 0,
-        }} />
-
-        {/* footer tombol fitur (dinaikkan sedikit) */}
-        <div style={{
           display: 'flex',
-          justifyContent: 'space-evenly',
+          flexDirection: 'column',
           alignItems: 'center',
-          padding: '8px 8px',               // dikurangi dari 12px
-          backgroundColor: '#fdf6f0',
-          borderBottomLeftRadius: 36,
-          borderBottomRightRadius: 36,
-          gap: 12,
-          flexShrink: 0,
+          justifyContent: 'center',
+          padding: '0 24px',
         }}>
-          {/* Copy text */}
-          <button
-            onClick={() => { onCopyText(); onClose(); }}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '12px 8px',
-              border: userBubbleBorder,
-              borderRadius: 14,
-              backgroundColor: userBubbleBg,
-              color: userBubbleTextColor,
-              fontFamily: chatFont,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <ClipboardIcon />
-            <span>Copy text</span>
-          </button>
+          {/* Kotak file */}
+          <div style={{
+            width: '100%',
+            backgroundColor: '#ffffff',
+            borderRadius: 16,
+            border: '1px solid rgba(0,0,0,0.08)',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            marginBottom: 20,
+          }}>
+            <FileIcon />
+            <span style={{
+              fontFamily: "'Literata', serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: '#1a1a1a',
+            }}>
+              Hydra Response.md
+            </span>
+          </div>
 
-          {/* Share */}
-          <button
-            onClick={() => { onShareExternal(); onClose(); }}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '12px 8px',
-              border: userBubbleBorder,
-              borderRadius: 14,
-              backgroundColor: userBubbleBg,
-              color: userBubbleTextColor,
-              fontFamily: chatFont,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <ShareIcon />
-            <span>Share</span>
-          </button>
+          {/* Garis pembatas */}
+          <div style={{
+            width: '100%',
+            height: 1,
+            backgroundColor: 'rgba(0,0,0,0.08)',
+            marginBottom: 20,
+          }} />
 
-          {/* Export Markdown */}
-          <button
-            onClick={() => { onExportMarkdown(); onClose(); }}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              padding: '12px 8px',
-              border: userBubbleBorder,
-              borderRadius: 14,
-              backgroundColor: userBubbleBg,
-              color: userBubbleTextColor,
-              fontFamily: chatFont,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <ExportIcon />
-            <span>Export MD</span>
-          </button>
+          {/* Tiga tombol bulat */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 24,
+          }}>
+            {[ 
+              { icon: <ClipboardIcon />, action: () => { onCopyText(); onClose(); } },
+              { icon: <ShareIcon />, action: () => { onShareExternal(); onClose(); } },
+              { icon: <ExportIcon />, action: () => { onExportMarkdown(); onClose(); } },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={btn.action}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  border: '1px solid rgba(0,0,0,0.12)',
+                  backgroundColor: '#f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#1a1a1a',
+                }}
+              >
+                {btn.icon}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
