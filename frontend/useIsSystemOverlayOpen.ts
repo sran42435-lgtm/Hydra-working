@@ -2,14 +2,16 @@
 import { useState, useEffect } from 'react';
 import { getSystemOverlayOpen, onSystemOverlayChange } from '../utils/systemOverlayState';
 
-export function useIsSystemOverlayOpen(): boolean {
-  const [open, setOpen] = useState<boolean>(getSystemOverlayOpen());
+export function useIsSystemOverlayOpen() {
+  const [open, setOpen] = useState(getSystemOverlayOpen());
 
   useEffect(() => {
-    const unsubscribe = onSystemOverlayChange((value: boolean) => {
+    const unsubscribe = onSystemOverlayChange(function (value) {
       setOpen(value);
     });
-    return unsubscribe;
+    return function () {
+      unsubscribe();
+    };
   }, []);
 
   return open;

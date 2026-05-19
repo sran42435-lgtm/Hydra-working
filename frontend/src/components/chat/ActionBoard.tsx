@@ -1,8 +1,9 @@
 // frontend/src/components/chat/ActionBoard.tsx
 
 import React, { useState } from "react";
+import { useIsSystemOverlayOpen } from "../../hooks/useIsSystemOverlayOpen";
 
-/* ---------- ikon yang sama ---------- */
+/* ---------- ikon ---------- */
 const ClipboardIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
@@ -35,7 +36,6 @@ interface ActionBoardProps {
   boardAnimation: string;
   isDraggingBoard: boolean;
   isBoardPressed: boolean;
-  /** drag handle events & style */
   handleStyle: React.CSSProperties;
   handlePillStyle: React.CSSProperties;
   onDragStart: (e: React.TouchEvent | React.MouseEvent) => void;
@@ -66,13 +66,14 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
 }) => {
   const chatFont = "'Literata', serif";
   const [pressedButton, setPressedButton] = useState<string | null>(null);
+  const isSystemOverlayOpen = useIsSystemOverlayOpen();
 
   const ACTION_BOARD_BASE_STYLE: React.CSSProperties = {
     position: "fixed",
     minWidth: 180,
     backgroundColor: "#fdf6f0",
-    backdropFilter: "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
+    backdropFilter: isSystemOverlayOpen ? "none" : "blur(24px)",
+    WebkitBackdropFilter: isSystemOverlayOpen ? "none" : "blur(24px)",
     borderRadius: 14,
     boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
     border: "1px solid rgba(0,0,0,0.04)",
@@ -85,11 +86,11 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
   };
 
   const buttonBase: React.CSSProperties = {
-    width: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "10px 14px",
+    width: "100%",
+    padding: "8px 14px",
     border: "none",
     color: "#1a1a1a",
     fontFamily: chatFont,
@@ -99,7 +100,8 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
     backgroundColor: "transparent",
     transform: "scale(1)",
     transition: "transform 0.15s ease, background-color 0.15s ease",
-    borderRadius: 0,
+    borderRadius: 10,
+    boxSizing: "border-box",
   };
 
   return (
@@ -111,44 +113,20 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
         top: y,
         transform: `translate(-50%, -50%) scale(${boardActiveScale})`,
         transition: "transform 0.15s ease",
-        animation: boardAnimation,
+        animation: isSystemOverlayOpen ? "none" : boardAnimation,
         opacity: isDraggingBoard || isBoardPressed ? 1 : undefined,
       }}
     >
       {/* drag handle */}
       <div
-        onTouchStart={(e) => {
-          e.stopPropagation();
-          onDragStart(e);
-        }}
-        onTouchMove={(e) => {
-          e.stopPropagation();
-          onDragMove(e);
-        }}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          onDragEnd();
-        }}
-        onTouchCancel={(e) => {
-          e.stopPropagation();
-          onDragEnd();
-        }}
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onDragStart(e);
-        }}
-        onMouseMove={(e) => {
-          e.stopPropagation();
-          onDragMove(e);
-        }}
-        onMouseUp={(e) => {
-          e.stopPropagation();
-          onDragEnd();
-        }}
-        onMouseLeave={(e) => {
-          e.stopPropagation();
-          onDragEnd();
-        }}
+        onTouchStart={(e) => { e.stopPropagation(); onDragStart(e); }}
+        onTouchMove={(e) => { e.stopPropagation(); onDragMove(e); }}
+        onTouchEnd={(e) => { e.stopPropagation(); onDragEnd(); }}
+        onTouchCancel={(e) => { e.stopPropagation(); onDragEnd(); }}
+        onMouseDown={(e) => { e.stopPropagation(); onDragStart(e); }}
+        onMouseMove={(e) => { e.stopPropagation(); onDragMove(e); }}
+        onMouseUp={(e) => { e.stopPropagation(); onDragEnd(); }}
+        onMouseLeave={(e) => { e.stopPropagation(); onDragEnd(); }}
         style={handleStyle}
       >
         <div style={handlePillStyle} />
@@ -157,10 +135,7 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
       {/* Copy */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCopy(content, messageId);
-        }}
+        onClick={(e) => { e.stopPropagation(); onCopy(content, messageId); }}
         onTouchStart={() => setPressedButton('copy')}
         onTouchEnd={() => setPressedButton(null)}
         onTouchCancel={() => setPressedButton(null)}
@@ -182,10 +157,7 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
       {/* Edit */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEdit(content, messageId);
-        }}
+        onClick={(e) => { e.stopPropagation(); onEdit(content, messageId); }}
         onTouchStart={() => setPressedButton('edit')}
         onTouchEnd={() => setPressedButton(null)}
         onTouchCancel={() => setPressedButton(null)}
@@ -207,10 +179,7 @@ export const ActionBoard: React.FC<ActionBoardProps> = ({
       {/* Retry */}
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRetry(content, messageId);
-        }}
+        onClick={(e) => { e.stopPropagation(); onRetry(content, messageId); }}
         onTouchStart={() => setPressedButton('retry')}
         onTouchEnd={() => setPressedButton(null)}
         onTouchCancel={() => setPressedButton(null)}

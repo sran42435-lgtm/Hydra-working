@@ -1,19 +1,12 @@
-/**
- * useChatStore Hook - Phase 1
- * Hook untuk membaca state chat secara reaktif di komponen React.
- */
+// frontend/src/components/chat/useChatStore.ts
 
 import { useSyncExternalStore } from "react";
 import { chatStore } from "../../store/chat_state_store";
-import type { Message } from "../../types/chat.types";
+import type { ChatState } from "../../store/chat_state_store";
 
-export function useChatStore(): {
-  messages: Message[];
-  isLoading: boolean;
-  error: string | null;
-} {
+export function useChatStore(): ChatState {
   return useSyncExternalStore(
     chatStore.subscribe.bind(chatStore),
-    () => chatStore.getState()   // arrow function preserves this context
+    () => chatStore.getState()
   );
 }

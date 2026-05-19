@@ -16,7 +16,7 @@ import { MessageBubbleView } from "./MessageBubbleView";
 import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { useShare } from "../../hooks/useShare";
 import { ShareSheet } from "./ShareSheet";
-import { ActionBoard } from "./ActionBoard";   // ← import papan aksi
+import { ActionBoard } from "./ActionBoard";
 
 interface MessageListViewProps {
   isLoading: boolean;
@@ -184,7 +184,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
   // ---- SHARE STATE & HOOK ----
   const [shareTarget, setShareTarget] = useState<{ content: string; userPrompt?: string } | null>(null);
-  const [sharePos, setSharePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const { shareExternally, copyShareText, exportMarkdown } = useShare();
 
   const { pos: boardPos, startDrag, stopDrag, setTarget, reset: resetBoard } = useSlowDrag(0, 0);
@@ -332,9 +331,8 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
     setSelectedAiContent(content);
   }, []);
 
-  const handleOpenShare = useCallback((content: string, userPrompt: string | undefined, clientX: number, clientY: number) => {
+  const handleOpenShare = useCallback((content: string, userPrompt: string | undefined) => {
     setShareTarget({ content, userPrompt });
-    setSharePos({ x: clientX, y: clientY + 70 });
   }, []);
 
   const handleCloseShare = useCallback(() => {
@@ -791,7 +789,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         const userPrompt = prevMsg?.role === 'user' ? prevMsg.content : undefined;
-                        handleOpenShare(cleanContent, userPrompt, e.clientX, e.clientY);
+                        handleOpenShare(cleanContent, userPrompt);
                       }}
                       style={{
                         display: "inline-flex",
@@ -903,7 +901,7 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
               </div>
             </div>
 
-            {/* =============== PAPAN AKSI SEKARANG DI KOMPONEN TERPISAH =============== */}
+            {/* =============== PAPAN AKSI =============== */}
             {isActionOpen && (
               <ActionBoard
                 x={boardPos.x}
@@ -962,8 +960,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
 
       {shareTarget && (
         <ShareSheet
-          x={sharePos.x}
-          y={sharePos.y}
           content={shareTarget.content}
           userPrompt={shareTarget.userPrompt}
           onClose={handleCloseShare}

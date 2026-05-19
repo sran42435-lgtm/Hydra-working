@@ -1,4 +1,6 @@
-import React, { useRef, useState, useEffect as useLayoutEffect } from "react";
+// frontend/src/components/chat/ChatInputBar.tsx
+
+import React, { useRef, useState, useLayoutEffect } from "react";
 
 interface ChatInputBarProps {
   text: string;
@@ -11,17 +13,15 @@ interface ChatInputBarProps {
   isEditing?: boolean;
 }
 
-// Ikon panah atas (send) – diperbesar
 const SendIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m5 12 7-7 7 7" />
     <path d="M12 19V5" />
   </svg>
 );
 
-// Ikon stop (kotak outline) – diperbesar
 const StopIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect width="14" height="14" x="5" y="5" rx="2" />
   </svg>
 );
@@ -33,7 +33,6 @@ const CloseIcon = () => (
   </svg>
 );
 
-// Warna
 const ACTIVE_COLOR = "rgb(214, 143, 111)";
 const INACTIVE_COLOR = "rgb(168, 162, 158)";
 
@@ -225,9 +224,9 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             position: "absolute",
             right: 10,
             bottom: 12,
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
+            width: 36,                   // lebih kecil dari sebelumnya (38)
+            height: 32,                  // lebih rendah
+            borderRadius: 8,             // persegi melengkung di setiap sisi
             border: "none",
             backgroundColor: buttonBg,
             color: "#fff",
@@ -236,9 +235,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             justifyContent: "center",
             cursor: isLoading || !isSendDisabled ? "pointer" : "not-allowed",
             boxShadow: isLoading || !isSendDisabled
-              ? "0 4px 12px rgba(214, 143, 111, 0.25)"
+              ? "0 4px 10px rgba(214, 143, 111, 0.25)"
               : "none",
             flexShrink: 0,
+            padding: 0,
           }}
         >
           {isLoading ? <StopIcon /> : <SendIcon />}

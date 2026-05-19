@@ -147,6 +147,23 @@ export function useAutoScroll({
   }, [handleScroll]);
 
   /**
+   * Pengganti scrollIntoView yang lebih stabil
+   * Menggunakan container.scrollTo()
+   */
+  const performScrollToBottom = useCallback(
+    (behavior: ScrollBehavior) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    },
+    []
+  );
+
+  /**
    * Auto scroll saat:
    * - loading aktif
    * - user masih dekat bawah
@@ -162,15 +179,14 @@ export function useAutoScroll({
       const behavior: ScrollBehavior =
         isLoading ? "auto" : "smooth";
 
-      bottomRef.current?.scrollIntoView({
-        behavior,
-      });
+      performScrollToBottom(behavior);
     }
   }, [
     dependency,
     isLoading,
     isAtBottom,
-    isSystemOverlayOpen,   // ← tambahkan dependency
+    isSystemOverlayOpen,
+    performScrollToBottom,
   ]);
 
   /**
@@ -182,10 +198,8 @@ export function useAutoScroll({
       return;
     }
 
-    bottomRef.current?.scrollIntoView({
-      behavior: "smooth",
-    });
-  }, [isSystemOverlayOpen]);   // ← tambahkan dependency
+    performScrollToBottom("smooth");
+  }, [isSystemOverlayOpen, performScrollToBottom]);
 
   return {
     containerRef,

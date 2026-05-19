@@ -1,3 +1,5 @@
+// frontend/src/store/chat_state_store.ts
+
 type Role = "user" | "assistant";
 
 export type Message = {
@@ -6,7 +8,7 @@ export type Message = {
   content: string;
 };
 
-type ChatState = {
+export type ChatState = {
   messages: Message[];
   isLoading: boolean;
   streamingAiId: string | null;
