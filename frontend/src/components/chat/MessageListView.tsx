@@ -13,6 +13,7 @@ import { HydraIcon } from "../ui/HydraIcon";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { AIMessageSheet } from "./AIMessageSheet";
 import { MessageBubbleView } from "./MessageBubbleView";
+import { MessageTimestamp } from "./MessageTimestamp";
 import { useAutoScroll } from "../../hooks/useAutoScroll";
 import { useShare } from "../../hooks/useShare";
 import { ShareSheet } from "./ShareSheet";
@@ -458,7 +459,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   const previousOverflowRef = useRef<string | null>(null);
 
   const startUserLongPress = useCallback((msgId: string) => {
-    // Bekukan scroll pada container pesan
     const container = scrollContainerRef.current;
     if (container) {
       previousOverflowRef.current = container.style.overflowY;
@@ -474,7 +474,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, []);
 
   const endUserLongPress = useCallback((msg: Message) => {
-    // Pulihkan scroll
     const container = scrollContainerRef.current;
     if (container && previousOverflowRef.current !== null) {
       container.style.overflowY = previousOverflowRef.current;
@@ -489,7 +488,6 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
   }, [handleOpenSheet]);
 
   const cancelUserLongPress = useCallback(() => {
-    // Pulihkan scroll
     const container = scrollContainerRef.current;
     if (container && previousOverflowRef.current !== null) {
       container.style.overflowY = previousOverflowRef.current;
@@ -925,6 +923,13 @@ export const MessageListView: React.FC<MessageListViewProps> = ({
                 />
               </div>
             </div>
+
+            {/* TIMESTAMP DI BAWAH BUBBLE */}
+{msg.timestamp && (
+  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2, marginRight: 4 }}>
+    <MessageTimestamp timestamp={msg.timestamp} animate />
+  </div>
+)}
 
             {/* =============== PAPAN AKSI =============== */}
             {isActionOpen && (

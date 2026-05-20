@@ -1,0 +1,76 @@
+/* frontend/src/components/ui/liquid-glass/LiquidGlassButton.css */
+
+.liquid-glass-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 50%;
+  background-color: rgba(253, 246, 240, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 1;
+  /* Transisi diatur oleh Framer Motion, tapi kita keep untuk safe area */
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Ripple animasi – dibuat via JS, tetapi CSS animation tetap kita definisikan */
+.liquid-glass-button .liquid-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  transform: scale(0);
+  animation: liquid-ripple-animation 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes liquid-ripple-animation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Layer distorsi – menggunakan SVG filter */
+.liquid-glass-button .distortion-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  filter: url(#liquid-distortion);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.liquid-glass-button.active .distortion-layer {
+  opacity: 1;
+}
+
+/* Glow reactive */
+.liquid-glass-button .reactive-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(180, 130, 110, 0.25),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.liquid-glass-button.active .reactive-glow {
+  opacity: 1;
+}

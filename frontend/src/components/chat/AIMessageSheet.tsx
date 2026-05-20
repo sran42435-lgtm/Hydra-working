@@ -1,6 +1,7 @@
 // frontend/src/components/chat/AIMessageSheet.tsx
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
+import { LiquidGlassButton } from "../../liquid-system/components";
 
 interface AIMessageSheetProps {
   content: string;
@@ -11,8 +12,8 @@ interface AIMessageSheetProps {
 
 const CLOSE_THRESHOLD = 150;
 const VELOCITY_THRESHOLD = 0.5;
-const EXPAND_VELOCITY_THRESHOLD = -0.4;   // kecepatan ke atas untuk memicu expand
-const EXPAND_OFFSET_THRESHOLD = -80;      // offset negatif (tarikan ke atas) minimal
+const EXPAND_VELOCITY_THRESHOLD = -0.4;
+const EXPAND_OFFSET_THRESHOLD = -80;
 
 export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
   content,
@@ -29,14 +30,11 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
   const offsetRef = useRef(0);
 
   const [expanded, setExpanded] = useState(false);
-  const [backPressed, setBackPressed] = useState(false);
 
-  // Reset expanded saat konten berubah
   useEffect(() => {
     setExpanded(false);
   }, [content]);
 
-  // Animasi penutupan
   const animateClose = useCallback(() => {
     const sheet = sheetRef.current;
     if (!sheet) {
@@ -52,7 +50,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     sheet.addEventListener("transitionend", handler);
   }, [onClose]);
 
-  // Kembali dari fullscreen
   const collapseFromFullscreen = useCallback(() => {
     setExpanded(false);
     const sheet = sheetRef.current;
@@ -62,7 +59,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     offsetRef.current = 0;
   }, []);
 
-  // --- Drag handler (hanya mengubah translateY via ref, tanpa state) ---
   const handlePointerDown = useCallback((clientY: number) => {
     if (!sheetRef.current || expanded) return;
     draggingRef.current = true;
@@ -71,7 +67,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     lastTimeRef.current = Date.now();
     velocityRef.current = 0;
     offsetRef.current = 0;
-
     sheetRef.current.style.transition = "none";
     sheetRef.current.style.transform = "translateY(0px)";
   }, [expanded]);
@@ -82,15 +77,10 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     const dt = now - lastTimeRef.current;
     lastTimeRef.current = now;
     const rawDiff = clientY - startYRef.current;
-
     if (dt > 0) velocityRef.current = (clientY - lastYRef.current) / dt;
     lastYRef.current = clientY;
-
-    // Hanya izinkan offset positif (tarik ke bawah) atau sedikit negatif (tarik ke atas)
-    // untuk memberi isyarat visual, tapi tetap menempel di bawah.
-    const clampedDiff = Math.min(rawDiff, 50); // batasi tarikan ke atas agar tidak terlalu jauh
-    offsetRef.current = Math.max(0, clampedDiff); // visual hanya di >= 0
-
+    const clampedDiff = Math.min(rawDiff, 50);
+    offsetRef.current = Math.max(0, clampedDiff);
     sheetRef.current.style.transform = `translateY(${offsetRef.current}px)`;
   }, [expanded]);
 
@@ -101,10 +91,8 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     const finalVelocity = velocityRef.current;
 
     if (!expanded) {
-      // Cek apakah ditarik ke atas dengan kecepatan/offset yang cukup
       const rawDiff = lastYRef.current - startYRef.current;
       if ((rawDiff < EXPAND_OFFSET_THRESHOLD && finalVelocity < 0) || finalVelocity < EXPAND_VELOCITY_THRESHOLD) {
-        // Expand ke fullscreen
         setExpanded(true);
         sheetRef.current.style.transition = "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)";
         sheetRef.current.style.transform = "translateY(0px)";
@@ -112,7 +100,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
       } else if (finalOffset > CLOSE_THRESHOLD || finalVelocity > VELOCITY_THRESHOLD) {
         animateClose();
       } else {
-        // Kembali ke posisi awal
         sheetRef.current.style.transition = "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)";
         sheetRef.current.style.transform = "translateY(0px)";
         offsetRef.current = 0;
@@ -158,7 +145,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
 
   if (!content) return null;
 
-  // Gaya statis (height tidak berubah saat drag)
   const sheetStyle: React.CSSProperties = {
     position: "fixed",
     bottom: 0,
@@ -179,11 +165,10 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
     transition: expanded
       ? "border-radius 0.3s ease, box-shadow 0.3s ease"
       : "border-radius 0.3s ease, box-shadow 0.3s ease",
-    touchAction: expanded ? "auto" : "none", // handle akan override
+    touchAction: expanded ? "auto" : "none",
     overscrollBehavior: expanded ? "none" : "contain",
   };
 
-  // Padding aman untuk area teks
   const contentPadding = expanded
     ? `calc(env(safe-area-inset-top) + 72px) 16px calc(env(safe-area-inset-bottom) + 24px)`
     : "0 16px 24px 16px";
@@ -204,7 +189,6 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
         }}
       />
       <div ref={sheetRef} style={sheetStyle}>
-        {/* Gagang (hanya saat normal) */}
         {!expanded && (
           <div
             onTouchStart={onTouchStart}
@@ -234,38 +218,17 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
           </div>
         )}
 
-        {/* Tombol kembali (expanded) – dengan safe area */}
         {expanded && (
-          <button
-            onTouchStart={() => setBackPressed(true)}
-            onTouchEnd={() => {
-              setBackPressed(false);
-              collapseFromFullscreen();
-            }}
-            onTouchCancel={() => setBackPressed(false)}
-            onMouseDown={() => setBackPressed(true)}
-            onMouseUp={() => {
-              setBackPressed(false);
-              collapseFromFullscreen();
-            }}
-            onMouseLeave={() => setBackPressed(false)}
+          <LiquidGlassButton
+            size={48}
+            onPress={collapseFromFullscreen}
+            preset="crystal"
+            distortionIntensity={0.7}
             style={{
               position: "absolute",
               top: `calc(env(safe-area-inset-top) + 16px)`,
               left: 16,
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              border: "1px solid rgba(0,0,0,0.08)",
-              backgroundColor: backPressed ? "rgba(0,0,0,0.06)" : "#fdf6f0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
               zIndex: 35,
-              transform: backPressed ? "scale(1.1)" : "scale(1)",
-              transition: "transform 0.15s ease, background-color 0.15s ease",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
             }}
           >
             <svg
@@ -282,10 +245,9 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
               <path d="m12 19-7-7 7-7" />
               <path d="M19 12H5" />
             </svg>
-          </button>
+          </LiquidGlassButton>
         )}
 
-        {/* Area teks */}
         <div
           style={{
             flex: 1,

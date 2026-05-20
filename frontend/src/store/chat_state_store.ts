@@ -6,6 +6,7 @@ export type Message = {
   id: string;
   role: Role;
   content: string;
+  timestamp?: number;   // ← baru, waktu Unix (ms)
 };
 
 export type ChatState = {
@@ -85,9 +86,14 @@ class ChatStore {
   }
 
   addMessage(message: Message) {
+    // Jika pesan user, tambahkan timestamp jika belum ada
+    const withTimestamp = {
+      ...message,
+      timestamp: message.timestamp ?? (message.role === 'user' ? Date.now() : undefined),
+    };
     this.state = {
       ...this.state,
-      messages: [...this.state.messages, message],
+      messages: [...this.state.messages, withTimestamp],
     };
 
     this.emit();
@@ -169,7 +175,6 @@ class ChatStore {
     this.emit();
   }
 
-  // ✅ Hapus satu message spesifik
   removeMessage(id: string) {
     this.state = {
       ...this.state,
@@ -194,7 +199,6 @@ class ChatStore {
     this.emit();
   }
 
-  // ✅ Bersihkan semua percakapan yang pernah distop
   cleanupStoppedConversations() {
     const messages = this.state.messages;
 
@@ -206,9 +210,7 @@ class ChatStore {
       const current = messages[i];
       const next = messages[i + 1];
 
-      // jika menemukan user
       if (current.role === "user") {
-        // cek apakah conversation ini memiliki stopped
         const hasStoppedAhead = messages
           .slice(i + 1)
           .some((m) =>
@@ -221,7 +223,6 @@ class ChatStore {
         }
       }
 
-      // assistant sebelum stopped
       if (
         current.role === "assistant" &&
         next?.id.endsWith("_stopped")
@@ -229,7 +230,6 @@ class ChatStore {
         continue;
       }
 
-      // stopped marker
       if (
         current.id.endsWith("_stopped")
       ) {
