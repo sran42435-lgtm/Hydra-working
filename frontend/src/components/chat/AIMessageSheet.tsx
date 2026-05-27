@@ -1,7 +1,7 @@
 // frontend/src/components/chat/AIMessageSheet.tsx
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { LiquidGlassButton } from "../../liquid-system/components";
+import { FloatingGlassButton } from "../ui/FloatingGlassButton";
 
 interface AIMessageSheetProps {
   content: string;
@@ -175,6 +175,7 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
 
   return (
     <>
+      {/* Overlay Backdrop */}
       <div
         onClick={expanded ? undefined : animateClose}
         style={{
@@ -188,7 +189,10 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
           animation: "fadeInSlow 0.5s ease forwards",
         }}
       />
+
+      {/* Sheet Container */}
       <div ref={sheetRef} style={sheetStyle}>
+        {/* Drag Handle (collapsed state only) */}
         {!expanded && (
           <div
             onTouchStart={onTouchStart}
@@ -218,12 +222,9 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
           </div>
         )}
 
+        {/* Floating Glass Button (expanded state only) */}
         {expanded && (
-          <LiquidGlassButton
-            size={48}
-            onPress={collapseFromFullscreen}
-            preset="crystal"
-            distortionIntensity={0.7}
+          <div
             style={{
               position: "absolute",
               top: `calc(env(safe-area-inset-top) + 16px)`,
@@ -231,23 +232,31 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
               zIndex: 35,
             }}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <FloatingGlassButton
+              size={48}
+              onPress={collapseFromFullscreen}
+              preset="crystal"
+              distortionIntensity={0.7}
             >
-              <path d="m12 19-7-7 7-7" />
-              <path d="M19 12H5" />
-            </svg>
-          </LiquidGlassButton>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+              </svg>
+            </FloatingGlassButton>
+          </div>
         )}
 
+        {/* Content Area */}
         <div
           style={{
             flex: 1,
@@ -268,6 +277,8 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
           {content}
         </div>
       </div>
+
+      {/* Animations */}
       <style>{`
         @keyframes fadeInSlow {
           from { opacity: 0; }
