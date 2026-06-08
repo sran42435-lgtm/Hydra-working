@@ -1,5 +1,7 @@
 source venv/bin/activate
 
+cd backend || exit 1
+
 MEMORY_SYSTEM_DATABASE_URL=sqlite:///./data/memory.db uvicorn memory_system.main:app --host 0.0.0.0 --port 8006 &
 
 uvicorn safety_pipeline.main:app --host 0.0.0.0 --port 8002 &
