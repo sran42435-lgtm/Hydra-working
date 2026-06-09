@@ -1,7 +1,6 @@
 // frontend/src/components/chat/AIMessageSheet.tsx
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
-import { FloatingGlassButton } from "../ui/FloatingGlassButton";
 
 interface AIMessageSheetProps {
   content: string;
@@ -222,38 +221,64 @@ export const AIMessageSheet: React.FC<AIMessageSheetProps> = ({
           </div>
         )}
 
-        {/* Floating Glass Button (expanded state only) */}
+        {/* Default Floating Round Button (expanded state only) */}
         {expanded && (
-          <div
+          <button
+            onClick={collapseFromFullscreen}
+            aria-label="Collapse sheet"
             style={{
               position: "absolute",
               top: `calc(env(safe-area-inset-top) + 16px)`,
               left: 16,
               zIndex: 35,
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              border: "none",
+              backgroundColor: "rgba(255, 255, 255, 0.85)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              color: "#4a4a4a",
+              padding: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.95)";
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.1)";
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.85)";
+              e.currentTarget.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "scale(0.95)";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "scale(1.05)";
             }}
           >
-            <FloatingGlassButton
-              size={48}
-              onPress={collapseFromFullscreen}
-              preset="crystal"
-              distortionIntensity={0.7}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="m12 19-7-7 7-7" />
-                <path d="M19 12H5" />
-              </svg>
-            </FloatingGlassButton>
-          </div>
+              <path d="m12 19-7-7 7-7" />
+              <path d="M19 12H5" />
+            </svg>
+          </button>
         )}
 
         {/* Content Area */}

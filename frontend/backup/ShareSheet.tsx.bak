@@ -1,6 +1,6 @@
 // components/chat/ShareSheet.tsx
 
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface ShareSheetProps {
   content: string;
@@ -64,8 +64,6 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   const lastTimeRef = useRef(0);
   const velocityRef = useRef(0);
   const offsetRef = useRef(0);
-
-  const [frozenTimestamp, setFrozenTimestamp] = useState('');
 
   const animateTo = useCallback((targetY: number, onComplete?: () => void) => {
     const sheet = sheetRef.current;
@@ -159,20 +157,6 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
   }, [handlePointerDown, handlePointerMove, handlePointerUp]);
 
   useEffect(() => {
-    const now = new Date();
-    const formatted = now.toLocaleString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-    setFrozenTimestamp(formatted);
-  }, []);
-
-  useEffect(() => {
     const sheet = sheetRef.current;
     if (!sheet) return;
     sheet.style.transition = 'none';
@@ -261,42 +245,21 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
             backgroundColor: '#ffffff',
             borderRadius: 16,
             border: '1px solid rgba(0,0,0,0.08)',
-            padding: '16px 20px 4px 20px',
+            padding: '16px 20px',
             display: 'flex',
-            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
             marginBottom: 24,
           }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
+            <FileIcon />
+            <span style={{
+              fontFamily: "'Literata', serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: '#1a1a1a',
             }}>
-              <FileIcon />
-              <span style={{
-                fontFamily: "'Literata', serif",
-                fontSize: 18,
-                fontWeight: 700,
-                color: '#1a1a1a',
-              }}>
-                Hydra Response.md
-              </span>
-            </div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              marginTop: 2,
-              marginBottom: 2,
-            }}>
-              <span style={{
-                fontFamily: "'Literata', serif",
-                fontSize: 11,
-                fontWeight: 400,
-                color: '#9e9591',
-                letterSpacing: '0.02em',
-              }}>
-                {frozenTimestamp}
-              </span>
-            </div>
+              Hydra Response.md
+            </span>
           </div>
 
           {/* Garis pembatas dengan teks "metode" di tengah */}
@@ -334,7 +297,7 @@ export const ShareSheet: React.FC<ShareSheetProps> = ({
             justifyContent: 'center',
             gap: 24,
           }}>
-            {[
+            {[ 
               { icon: <ClipboardIcon />, action: () => { onCopyText(); onClose(); } },
               { icon: <ShareIcon />, action: () => { onShareExternal(); onClose(); } },
               { icon: <ExportIcon />, action: () => { onExportMarkdown(); onClose(); } },

@@ -112,8 +112,10 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   const loadingPlaceholder = `AI sedang merespons${".".repeat(dots)}`;
   const showPlaceholder = text.length === 0 && !isComposing;
 
-  // Posisi overlay disesuaikan dengan padding
-  const overlayTop = isEditing ? 20 : 12;   // 12 (container) + 8 (textarea) saat edit, 12 saat normal
+  // Posisi overlay placeholder
+  // Normal: 12 (padding textarea)
+  // Edit: 12 (container padding top) + 32 (kapsul "mengedit") + 8 (marginBottom kapsul) + 1 (garis) + 4 (marginBottom garis) + 8 (padding textarea) = 65
+  const overlayTop = isEditing ? 65 : 12;
 
   return (
     <div style={{
@@ -297,8 +299,8 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             right: 10,
             bottom: 12,
             width: 36,
-            height: 32,
-            borderRadius: 8,
+            height: 36,
+            borderRadius: "50%",
             border: "none",
             backgroundColor: buttonBg,
             color: "#fff",
